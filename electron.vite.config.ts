@@ -1,7 +1,7 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from './node_modules/@tailwindcss/vite/dist/index.mjs' // https://github.com/tailwindlabs/tailwindcss/discussions/16250#discussioncomment-13472403
 
 export default defineConfig({
   main: {
@@ -16,6 +16,9 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src')
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    worker: {
+      format: 'es' // https://github.com/vitejs/vite/issues/18585#issuecomment-2459681237
+    },
   }
 })

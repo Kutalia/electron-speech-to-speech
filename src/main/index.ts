@@ -42,16 +42,19 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Cross origin isolation to allow ONNX using multithreading for WASM
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Cross-Origin-Opener-Policy': ['same-origin'],
-        'Cross-Origin-Embedder-Policy': ['require-corp'],
-      }
+  // TODO: fix worker not loading in a built app when using cross origin isolation
+  if (is.dev) {
+    // Cross origin isolation to allow ONNX using multithreading for WASM
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Cross-Origin-Opener-Policy': ['same-origin'],
+          'Cross-Origin-Embedder-Policy': ['require-corp'],
+        }
+      })
     })
-  })
+  }
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
