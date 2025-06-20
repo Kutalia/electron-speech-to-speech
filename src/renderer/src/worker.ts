@@ -3,7 +3,7 @@ import { AutomaticSpeechRecognitionOutput, pipeline, TextToAudioOutput, Translat
 import {
   DEFAULT_LANG_TRANSCRIBE, DEFAULT_SRC_LANG_TRANSLATE, DEFAULT_TGT_LANG_TRANSLATE,
   // SPEAKER_EMBEDDINGS_URL,
-  STT_MODEL,
+  STT_MODEL_OPTIONS,
   // TTS_MODEL,
   TTT_MODEL
 } from "./utils/constants";
@@ -15,7 +15,7 @@ const [translate, transcribe
   // , synthesize
 ] = await Promise.all([
   pipeline('translation', TTT_MODEL),
-  pipeline('automatic-speech-recognition', STT_MODEL, { device: 'webgpu' }),
+  pipeline('automatic-speech-recognition', STT_MODEL_OPTIONS['small'].model, STT_MODEL_OPTIONS['small'].options),
   // pipeline('text-to-audio', TTS_MODEL, { device: 'webgpu', dtype: 'q8' }),
 ])
 
