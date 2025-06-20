@@ -1,11 +1,25 @@
 // https://github.com/mohayonao/wav-decoder
 
+interface Opts {
+  symmetric?: boolean
+}
+
+interface Format {
+  formatId: number,
+  floatingPoint: boolean,
+  numberOfChannels: number,
+  sampleRate: number,
+  byteRate: number,
+  blockSize: number,
+  bitDepth: number
+}
+
 var formats = {
   0x0001: "lpcm",
   0x0003: "lpcm"
 };
 
-function decodeSync(buffer, opts) {
+function decodeSync(buffer: ArrayBuffer, opts?: Opts) {
   opts = opts || {};
 
   var dataView = new DataView(buffer);
@@ -21,42 +35,42 @@ function decodeSync(buffer, opts) {
     throw new TypeError("Invalid WAV file");
   }
 
-  var format = null;
-  var audioData = null;
+  var format: null | ReturnType<typeof decodeFormat> = null;
+  var audioData: null | ReturnType<typeof decodeData> = null;
 
   do {
     var chunkType = reader.string(4);
     var chunkSize = reader.uint32();
 
     switch (chunkType) {
-    case "fmt ":
-      format = decodeFormat(reader, chunkSize);
-      if (format instanceof Error) {
-        throw format;
-      }
-      break;
-    case "data":
-      audioData = decodeData(reader, chunkSize, format, opts);
-      if (audioData instanceof Error) {
-        throw audioData;
-      }
-      break;
-    default:
-      reader.skip(chunkSize);
-      break;
+      case "fmt ":
+        format = decodeFormat(reader, chunkSize);
+        if (format instanceof Error) {
+          throw format;
+        }
+        break;
+      case "data":
+        audioData = decodeData(reader, chunkSize, format as Format, opts);
+        if (audioData instanceof Error) {
+          throw audioData;
+        }
+        break;
+      default:
+        reader.skip(chunkSize);
+        break;
     }
   } while (audioData === null);
 
   return audioData;
 }
 
-function decode(buffer, opts) {
-  return new Promise(function(resolve) {
+function decode(buffer: ArrayBuffer, opts?: Opts) {
+  return new Promise(function (resolve) {
     resolve(decodeSync(buffer, opts));
   });
 }
 
-function decodeFormat(reader, chunkSize) {
+function decodeFormat(reader: ReturnType<typeof createReader>, chunkSize: number) {
   var formatId = reader.uint16();
 
   if (!formats.hasOwnProperty(formatId)) {
@@ -77,7 +91,7 @@ function decodeFormat(reader, chunkSize) {
   return format;
 }
 
-function decodeData(reader, chunkSize, format, opts) {
+function decodeData(reader: ReturnType<typeof createReader>, chunkSize: number, format: Format, opts: Opts) {
   chunkSize = Math.min(chunkSize, reader.remain());
 
   var length = Math.floor(chunkSize / format.blockSize);
@@ -103,7 +117,7 @@ function decodeData(reader, chunkSize, format, opts) {
   };
 }
 
-function readPCM(reader, channelData, length, format, opts) {
+function readPCM(reader: ReturnType<typeof createReader>, channelData: Float32Array[], length: number, format: Format, opts: Opts) {
   var bitDepth = format.bitDepth;
   var decoderOption = format.floatingPoint ? "f" : opts.symmetric ? "s" : "";
   var methodName = "pcm" + bitDepth + decoderOption;
@@ -124,45 +138,45 @@ function readPCM(reader, channelData, length, format, opts) {
   return null;
 }
 
-function createReader(dataView) {
+function createReader(dataView: DataView) {
   var pos = 0;
 
   return {
-    remain: function() {
+    remain: function () {
       return dataView.byteLength - pos;
     },
-    skip: function(n) {
+    skip: function (n) {
       pos += n;
     },
-    uint8: function() {
-      var data = dataView.getUint8(pos, true);
+    uint8: function () {
+      var data = dataView.getUint8(pos);
 
       pos += 1;
 
       return data;
     },
-    int16: function() {
+    int16: function () {
       var data = dataView.getInt16(pos, true);
 
       pos += 2;
 
       return data;
     },
-    uint16: function() {
+    uint16: function () {
       var data = dataView.getUint16(pos, true);
 
       pos += 2;
 
       return data;
     },
-    uint32: function() {
+    uint32: function () {
       var data = dataView.getUint32(pos, true);
 
       pos += 4;
 
       return data;
     },
-    string: function(n) {
+    string: function (n) {
       var data = "";
 
       for (var i = 0; i < n; i++) {
@@ -171,35 +185,35 @@ function createReader(dataView) {
 
       return data;
     },
-    pcm8: function() {
+    pcm8: function () {
       var data = dataView.getUint8(pos) - 128;
 
       pos += 1;
 
       return data < 0 ? data / 128 : data / 127;
     },
-    pcm8s: function() {
+    pcm8s: function () {
       var data = dataView.getUint8(pos) - 127.5;
 
       pos += 1;
 
       return data / 127.5;
     },
-    pcm16: function() {
+    pcm16: function () {
       var data = dataView.getInt16(pos, true);
 
       pos += 2;
 
       return data < 0 ? data / 32768 : data / 32767;
     },
-    pcm16s: function() {
+    pcm16s: function () {
       var data = dataView.getInt16(pos, true);
 
       pos += 2;
 
       return data / 32768;
     },
-    pcm24: function() {
+    pcm24: function () {
       var x0 = dataView.getUint8(pos + 0);
       var x1 = dataView.getUint8(pos + 1);
       var x2 = dataView.getUint8(pos + 2);
@@ -210,7 +224,7 @@ function createReader(dataView) {
 
       return data < 0 ? data / 8388608 : data / 8388607;
     },
-    pcm24s: function() {
+    pcm24s: function () {
       var x0 = dataView.getUint8(pos + 0);
       var x1 = dataView.getUint8(pos + 1);
       var x2 = dataView.getUint8(pos + 2);
@@ -221,28 +235,28 @@ function createReader(dataView) {
 
       return data / 8388608;
     },
-    pcm32: function() {
+    pcm32: function () {
       var data = dataView.getInt32(pos, true);
 
       pos += 4;
 
       return data < 0 ? data / 2147483648 : data / 2147483647;
     },
-    pcm32s: function() {
+    pcm32s: function () {
       var data = dataView.getInt32(pos, true);
 
       pos += 4;
 
       return data / 2147483648;
     },
-    pcm32f: function() {
+    pcm32f: function () {
       var data = dataView.getFloat32(pos, true);
 
       pos += 4;
 
       return data;
     },
-    pcm64f: function() {
+    pcm64f: function () {
       var data = dataView.getFloat64(pos, true);
 
       pos += 8;
