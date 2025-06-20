@@ -65,7 +65,7 @@ function decodeSync(buffer: ArrayBuffer, opts?: Opts) {
 }
 
 function decode(buffer: ArrayBuffer, opts?: Opts) {
-  return new Promise(function (resolve) {
+  return new Promise<ReturnType<typeof decodeSync>>(function (resolve) {
     resolve(decodeSync(buffer, opts));
   });
 }
