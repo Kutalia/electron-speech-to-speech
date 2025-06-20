@@ -27,10 +27,11 @@ function App(): React.JSX.Element {
     // @ts-ignore
     const text = transcriptionResult.text
 
-    const translatedText = await execTask({ task: 'translation', data: text }) as TranslationOutput
+    const translationResult = await execTask({ task: 'translation', data: text }) as TranslationOutput
+    const translatedText = translationResult.map((t) => t.translation_text).join('')
     console.log({ text, translatedText })
 
-    const synthesizingResult = await execTask({ task: 'text-to-audio', data: translatedText.map((t) => t.translation_text).join('') }) as TextToAudioOutput
+    const synthesizingResult = await execTask({ task: 'text-to-audio', data: translatedText }) as TextToAudioOutput
     setTtsResult(synthesizingResult)
     console.log({ synthesizingResult })
   }, [execTask])
