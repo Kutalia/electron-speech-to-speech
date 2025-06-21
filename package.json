@@ -27,8 +27,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@huggingface/transformers": "^3.5.2",
     "audiobuffer-to-wav": "^1.0.0",
-    "electron-updater": "^6.3.9",
-    "kokoro-js": "^1.2.1"
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

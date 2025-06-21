@@ -1,11 +1,33 @@
 import * as tts from '@diffusionstudio/vits-web';
+import { getLangNameByCode, getVoiceIdByLangCode, getVoices } from './helpers';
 import { WavDecoder } from "./wavDecoder";
 
-export const synthesizeWithVits = async (text: string) => {
-  const wav = await tts.predict({
-    text,
-    voiceId: 'fr_FR-tom-medium',
-  });
+export const synthesizeWithVits = async (text: string, langCode: string) => {
+  let tryCount = 0
+  const voiceGroup = getVoices()[getLangNameByCode(langCode)]
+  let wav = new Blob()
+
+  // Need to iterate through all voices in the family because some of them sometimes might be glitchy
+  // TODO: allow manual voice selection in UI
+  do {
+    try {
+      wav = await tts.predict({
+        text,
+        voiceId: getVoiceIdByLangCode(langCode, tryCount),
+      });
+
+      break
+    } catch (err) {
+      tryCount++
+    }
+  } while (tryCount < voiceGroup!.length)
+
+  if (!wav.size) {
+    return {
+      audio: new Float32Array(),
+      sampling_rate: 0,
+    }
+  }
 
   const decoded = await WavDecoder.decode(await wav.arrayBuffer())
 

@@ -1,23 +1,36 @@
-import { AutomaticSpeechRecognitionOutput, pipeline, TextToAudioOutput, TranslationOutput } from "@huggingface/transformers";
+import { AutomaticSpeechRecognitionOutput, pipeline, TextToAudioOutput, TranslationOutput, TranslationPipeline } from "@huggingface/transformers";
 
 import {
-  DEFAULT_LANG_TRANSCRIBE, DEFAULT_SRC_LANG_TRANSLATE, DEFAULT_TGT_LANG_TRANSLATE,
-  // SPEAKER_EMBEDDINGS_URL,
+  DEFAULT_SRC_LANG, DEFAULT_TGT_LANG,
   STT_MODEL_OPTIONS,
-  // TTS_MODEL,
-  TTT_MODEL
+  TTT_MODEL_PREFIX,
 } from "./utils/constants";
-// import { generateWaveForm } from "./utils/textToSpeech";
-// import { synthesizeWithKokoro } from "./utils/textToSpeechKokoro";
 import { synthesizeWithVits } from "./utils/textToSpeechVits";
+import { getLangNameByCode } from "./utils/helpers";
 
-const [translate, transcribe
-  // , synthesize
-] = await Promise.all([
-  pipeline('translation', TTT_MODEL),
-  pipeline('automatic-speech-recognition', STT_MODEL_OPTIONS['small'].model, STT_MODEL_OPTIONS['small'].options),
-  // pipeline('text-to-audio', TTS_MODEL, { device: 'webgpu', dtype: 'q8' }),
-])
+const transcribe = await pipeline('automatic-speech-recognition', STT_MODEL_OPTIONS['small'].model, STT_MODEL_OPTIONS['small'].options)
+
+type ChangeTranslationLanguagesParams = Partial<{ src_lang: string, tgt_lang: string }>
+
+let translate: TranslationPipeline
+let saved_src_lang = DEFAULT_SRC_LANG
+let saved_tgt_lang = DEFAULT_TGT_LANG
+
+const setTranslationPipeline = async ({ src_lang = saved_src_lang, tgt_lang = saved_tgt_lang }: ChangeTranslationLanguagesParams) => {
+  if (translate) {
+    await translate.dispose()
+  }
+
+  translate = await pipeline('translation',
+    `${TTT_MODEL_PREFIX}en-${tgt_lang}`, // For now source language is always English as Whisper already translates everything to English
+    { device: 'webgpu', dtype: 'q4' }
+  )
+
+  saved_src_lang = src_lang
+  saved_tgt_lang = tgt_lang
+}
+
+await setTranslationPipeline({})
 
 self.postMessage({
   status: 'ready',
@@ -30,36 +43,25 @@ self.addEventListener('message', async (event) => {
 
   switch (message.task) {
     case 'translation': {
-      result = await translate(message.data, {
-        // @ts-ignore
-        src_lang: DEFAULT_SRC_LANG_TRANSLATE,
-        // @ts-ignore
-        tgt_lang: DEFAULT_TGT_LANG_TRANSLATE,
-        // max_length: 1024,
-        // max_new_tokens: 2048,
-        // num_beams: 8,
-      })
+      result = await translate(message.data)
       break
     }
     case 'automatic-speech-recognition': {
       result = await transcribe(message.data, {
-        language: DEFAULT_LANG_TRANSCRIBE,
+        language: getLangNameByCode(saved_src_lang),
+        // TODO: consider using pure transcribed texts in the first place and only use Whisper's translation when there's no suitable standalone translation model available
+        task: 'translate',
       })
 
       break
     }
     case 'text-to-audio': {
-      // glitched
-      // result = await synthesize(message.data, {
-      //   speaker_embeddings: SPEAKER_EMBEDDINGS_URL,
-      // })
+      result = await synthesizeWithVits(message.data, saved_tgt_lang)
 
-      // glitched
-      // result = await generateWaveForm(message.data)
-
-      // result = await synthesizeWithKokoro(message.data)
-
-      result = await synthesizeWithVits(message.data) // The most realistic so far with the largest voice coverage
+      break
+    }
+    case 'change-languages': {
+      await setTranslationPipeline(message.data)
 
       break
     }

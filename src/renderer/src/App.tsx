@@ -3,8 +3,9 @@ import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
 import Versions from './components/Versions'
 import { useWorker } from './hooks/useWorker'
-import { SAMPLING_RATE } from './utils/constants'
+import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, SAMPLING_RATE } from './utils/constants'
 import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput } from '@huggingface/transformers'
+import { SelectLanguage } from './components/SelectLanguage'
 
 function App(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
@@ -36,6 +37,14 @@ function App(): React.JSX.Element {
     console.log({ synthesizingResult })
   }, [execTask])
 
+  const onSrcLangChange = useCallback((src_lang: string) => {
+    execTask({ task: 'change-languages', data: { src_lang } })
+  }, [execTask])
+
+  const onTgtLangChange = useCallback((tgt_lang: string) => {
+    execTask({ task: 'change-languages', data: { tgt_lang } })
+  }, [execTask])
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
       <div className="flex flex-col items-center gap-8">
@@ -49,16 +58,20 @@ function App(): React.JSX.Element {
           onChange={setOutputDevice}
 
         />
+        <div className="flex gap-4 justify-stretch w-80">
+          <SelectLanguage label="Input language" onChange={onSrcLangChange} defaultValue={DEFAULT_SRC_LANG} />
+          <SelectLanguage label="Output language" onChange={onTgtLangChange} defaultValue={DEFAULT_TGT_LANG} />
+        </div>
       </div>
-      {
-        !isReady ? <div className="loading loading-bars loading-xl text-accent" />
-          : <AudioRecorder
-            inputDeviceId={inputDevice}
-            outputDeviceId={outputDevice}
-            onRecordingComplete={onRecordingComplete}
-            ttsResult={ttsResult}
-          />
-      }
+      {!isReady && <div className="loading loading-bars loading-xl text-accent" />}
+      <div style={{ display: isReady ? 'block' : 'none' }}>
+        <AudioRecorder
+          inputDeviceId={inputDevice}
+          outputDeviceId={outputDevice}
+          onRecordingComplete={onRecordingComplete}
+          ttsResult={ttsResult}
+        />
+      </div>
       <div className="bg-white p-2 rounded-md">
         <Versions></Versions>
       </div>
