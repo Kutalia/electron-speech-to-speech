@@ -2,7 +2,8 @@ import { env } from "@huggingface/transformers";
 import * as tts from '@diffusionstudio/vits-web';
 
 import { SAMPLING_RATE } from "./constants";
-import whisperLanguages from '../utils/whisper-languages.json'
+import whisperLanguages from './whisper-languages.json'
+import opusModels from './opus-models.json'
 
 env.allowLocalModels = false
 
@@ -51,7 +52,8 @@ function getAvailableSpeakableLangs() {
   )
 }
 
-// Returns the list of voices in languages also supported by transcription model
+// Returns the list of voices in languages also supported by whisper
+// TODO: use nllb as the opus alternative, combine it's supported languages with the list
 export function getVoices() {
   const availableSpeakableLangs = getAvailableSpeakableLangs()
 
@@ -65,10 +67,48 @@ export function getLangCodeByName(langName: string) {
 
 export function getLangNameByCode(langCode: string) {
   const voices = getAvailableSpeakableLangs()
-  return voices.find((voice) => voice.language.family === langCode)!
-    .language.name_english
+  const voice = voices.find((voice) => voice.language.family === langCode)
+  if (voice) {
+    return voice.language.name_english
+  }
+  return null
 }
 
 export function getVoiceIdByLangCode(langCode: string, index: number = 0) {
-  return getVoices()[getLangNameByCode(langCode)]![index].key
+  const langName = getLangNameByCode(langCode)
+  if (langName) {
+    return getVoices()[langName]![index].key
+  }
+  return null
+}
+
+export function getTranslationModels() {
+  // Only returning "traditional" models (languages codes that contain 2 letters)
+  const modelList = opusModels.filter((m) => m.split('/')[1].length === 13)
+  let models = new Map<string, string>()
+
+  const searchStr = 'mt-'
+
+  modelList.forEach((model) => {
+    models.set(model.slice(model.indexOf(searchStr) + searchStr.length), model)
+  })
+
+  return models
+}
+
+export function getLanguages() {
+  const translationModels = getTranslationModels()
+
+  const inputTranslationLangs = Array.from(translationModels.keys()).map((k) => k.split('-')[0])
+  const outputTranslationLangs = Array.from(translationModels.keys()).map((k) => k.split('-')[1])
+
+  const languageCodes = {
+    input: Array.from(new Set(inputTranslationLangs.filter(getLangNameByCode))),
+    output: Array.from(new Set(outputTranslationLangs.filter(getLangNameByCode))),
+  }
+
+  return {
+    input: languageCodes.input.map((l) => ({ value: l, label: getLangNameByCode(l) as string })),
+    output: languageCodes.output.map((l) => ({ value: l, label: getLangNameByCode(l) as string })),
+  }
 }

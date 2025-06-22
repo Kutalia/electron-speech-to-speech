@@ -39,8 +39,6 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
     },
   }
 }
-// Might need clearing browser data after changing model https://github.com/huggingface/transformers.js/issues/142#issuecomment-2018326959
-export const TTT_MODEL_PREFIX = 'onnx-community/opus-mt-'
 
 export const DEFAULT_SRC_LANG = 'en'
 export const DEFAULT_TGT_LANG = 'fr'

@@ -4,7 +4,7 @@ import { WavDecoder } from "./wavDecoder";
 
 export const synthesizeWithVits = async (text: string, langCode: string) => {
   let tryCount = 0
-  const voiceGroup = getVoices()[getLangNameByCode(langCode)]
+  const voiceGroup = getVoices()[getLangNameByCode(langCode) as string]
   let wav = new Blob()
 
   // Need to iterate through all voices in the family because some of them sometimes might be glitchy
@@ -13,7 +13,7 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
     try {
       wav = await tts.predict({
         text,
-        voiceId: getVoiceIdByLangCode(langCode, tryCount),
+        voiceId: getVoiceIdByLangCode(langCode, tryCount) as tts.VoiceId,
       });
 
       break

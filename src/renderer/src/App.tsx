@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
 import Versions from './components/Versions'
@@ -6,6 +6,7 @@ import { useWorker } from './hooks/useWorker'
 import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, SAMPLING_RATE } from './utils/constants'
 import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput } from '@huggingface/transformers'
 import { SelectLanguage } from './components/SelectLanguage'
+import { getLanguages } from './utils/helpers'
 
 function App(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
@@ -45,6 +46,8 @@ function App(): React.JSX.Element {
     execTask({ task: 'change-languages', data: { tgt_lang } })
   }, [execTask])
 
+  const languages = useMemo(getLanguages, [])
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
       <div className="flex flex-col items-center gap-8">
@@ -59,8 +62,8 @@ function App(): React.JSX.Element {
 
         />
         <div className="flex gap-4 justify-stretch w-80">
-          <SelectLanguage label="Input language" onChange={onSrcLangChange} defaultValue={DEFAULT_SRC_LANG} />
-          <SelectLanguage label="Output language" onChange={onTgtLangChange} defaultValue={DEFAULT_TGT_LANG} />
+          <SelectLanguage options={languages.input} label="Input language" onChange={onSrcLangChange} defaultValue={DEFAULT_SRC_LANG} />
+          <SelectLanguage options={languages.output} label="Output language" onChange={onTgtLangChange} defaultValue={DEFAULT_TGT_LANG} />
         </div>
       </div>
       {!isReady && <div className="loading loading-bars loading-xl text-accent" />}
