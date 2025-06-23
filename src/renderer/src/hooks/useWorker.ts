@@ -1,3 +1,4 @@
+import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG } from "@renderer/utils/constants"
 import { AtLeastOne } from "@renderer/utils/types"
 import { useCallback, useEffect, useState } from "react"
 
@@ -14,10 +15,15 @@ type ExecTaskParams =
     task: 'change-languages'
     data: AtLeastOne<{ src_lang: string, tgt_lang: string }>
   }
+  | {
+    task: 'get-languages'
+    data: { src_lang: string, tgt_lang: string }
+  }
 
 export const useWorker = () => {
   const [worker] = useState(() => new Worker(new URL('../worker.ts', import.meta.url), { type: 'module' }))
   const [isReady, setIsReady] = useState(false)
+  const [languages, setLanguages] = useState({ src_lang: DEFAULT_SRC_LANG, tgt_lang: DEFAULT_TGT_LANG })
 
   const execTask = useCallback((params: ExecTaskParams) => {
     if (!isReady) {
@@ -45,9 +51,15 @@ export const useWorker = () => {
 
   useEffect(() => {
     worker.addEventListener('message', (event) => {
-      switch (event.data.status) {
+      const message = event.data
+
+      switch (message.status) {
         case 'ready': {
           setIsReady(true)
+          break
+        }
+        case 'languages-changed': {
+          setLanguages(message.data)
           break
         }
         default:
@@ -59,5 +71,6 @@ export const useWorker = () => {
   return {
     isReady,
     execTask,
+    languages,
   }
 }

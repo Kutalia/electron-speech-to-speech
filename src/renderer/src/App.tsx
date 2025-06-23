@@ -1,18 +1,18 @@
+import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput } from '@huggingface/transformers'
 import { useCallback, useMemo, useState } from 'react'
 import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
+import { SelectLanguage } from './components/SelectLanguage'
 import Versions from './components/Versions'
 import { useWorker } from './hooks/useWorker'
-import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, SAMPLING_RATE } from './utils/constants'
-import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput } from '@huggingface/transformers'
-import { SelectLanguage } from './components/SelectLanguage'
-import { getLanguages } from './utils/helpers'
+import { SAMPLING_RATE } from './utils/constants'
+import { getLanguages, getTranslationModels } from './utils/helpers'
 
 function App(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
-  const { isReady, execTask } = useWorker()
+  const { isReady, execTask, languages: savedLanguages } = useWorker()
 
   const onRecordingComplete = useCallback(async (blob: Blob) => {
     const audioContext = new AudioContext({
@@ -46,7 +46,8 @@ function App(): React.JSX.Element {
     execTask({ task: 'change-languages', data: { tgt_lang } })
   }, [execTask])
 
-  const languages = useMemo(getLanguages, [])
+  const allLanguages = useMemo(getLanguages, [])
+  const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
@@ -62,8 +63,24 @@ function App(): React.JSX.Element {
 
         />
         <div className="flex gap-4 justify-stretch w-80">
-          <SelectLanguage options={languages.input} label="Input language" onChange={onSrcLangChange} defaultValue={DEFAULT_SRC_LANG} />
-          <SelectLanguage options={languages.output} label="Output language" onChange={onTgtLangChange} defaultValue={DEFAULT_TGT_LANG} />
+          <SelectLanguage
+            options={allLanguages.input}
+            label="Input language"
+            onChange={onSrcLangChange}
+            defaultValue={savedLanguages.src_lang}
+          />
+          <SelectLanguage
+            options={allLanguages.output}
+            disabledOptions={allLanguages.output
+              .filter(({ value: l }) =>
+                !translationModelsPairs.find((p) => p === `${savedLanguages.src_lang}-${l}`)
+              )
+              .map((v) => v.value)
+            }
+            label="Output language"
+            onChange={onTgtLangChange}
+            defaultValue={savedLanguages.tgt_lang}
+          />
         </div>
       </div>
       {!isReady && <div className="loading loading-bars loading-xl text-accent" />}

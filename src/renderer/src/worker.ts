@@ -15,20 +15,27 @@ let translate: TranslationPipeline
 let saved_src_lang = DEFAULT_SRC_LANG
 let saved_tgt_lang = DEFAULT_TGT_LANG
 
+const getSavedLanguages = () => ({ src_lang: saved_src_lang, tgt_lang: saved_tgt_lang })
+
 const setTranslationPipeline = async ({ src_lang = saved_src_lang, tgt_lang = saved_tgt_lang }: ChangeTranslationLanguagesParams) => {
   if (translate) {
     await translate.dispose()
   }
 
-  const model = getTranslationModels().get(`en-${tgt_lang}`) as string
+  const model = getTranslationModels().get(`${src_lang}-${tgt_lang}`) as string
 
   translate = await pipeline<'translation'>('translation',
-    model, // For now source language is always English as Whisper already translates everything to English
+    model,
     model.indexOf('Xenova') === -1 ? { device: 'webgpu', dtype: 'q4' } : { device: 'wasm', dtype: 'fp32' }
   )
 
   saved_src_lang = src_lang
   saved_tgt_lang = tgt_lang
+
+  self.postMessage({
+    status: 'languages-changed',
+    data: getSavedLanguages(),
+  })
 }
 
 await setTranslationPipeline({})
@@ -40,7 +47,13 @@ self.postMessage({
 self.addEventListener('message', async (event) => {
   const message = event.data
 
-  let result: TranslationOutput | TranslationOutput[] | AutomaticSpeechRecognitionOutput | AutomaticSpeechRecognitionOutput[] | TextToAudioOutput
+  let result:
+    | TranslationOutput
+    | TranslationOutput[]
+    | AutomaticSpeechRecognitionOutput
+    | AutomaticSpeechRecognitionOutput[]
+    | TextToAudioOutput
+    | { src_lang: string, tgt_lang: string }
 
   switch (message.task) {
     case 'translation': {
@@ -50,8 +63,7 @@ self.addEventListener('message', async (event) => {
     case 'automatic-speech-recognition': {
       result = await transcribe(message.data, {
         language: getLangNameByCode(saved_src_lang) as string,
-        // TODO: consider using pure transcribed texts in the first place and only use Whisper's translation when there's no suitable standalone translation model available
-        task: 'translate',
+        task: 'transcribe',
       })
 
       break
@@ -64,6 +76,11 @@ self.addEventListener('message', async (event) => {
     }
     case 'change-languages': {
       await setTranslationPipeline(message.data)
+
+      break
+    }
+    case 'get-languages': {
+      result = getSavedLanguages()
 
       break
     }
