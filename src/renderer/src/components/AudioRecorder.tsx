@@ -98,6 +98,8 @@ export const AudioRecorder: React.FC<Props> = ({ inputDeviceId, outputDeviceId, 
           // audioBufferSource.buffer = audioBuffer
           // audioBufferSource.connect(audioContext.destination)
           // audioBufferSource.start(0)
+
+          synthesizedAudioEl.play()
         }
       }
     }
