@@ -43,4 +43,4 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
 export const DEFAULT_SRC_LANG = 'en'
 export const DEFAULT_TGT_LANG = 'fr'
 
-export const DEFAULT_HOTKEY = 'CAPS_LOCK'
+export const DEFAULT_HOTKEY = 'CAPS LOCK'
