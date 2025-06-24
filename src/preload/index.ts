@@ -1,5 +1,6 @@
-import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge, ipcRenderer } from 'electron'
+import { IGlobalKeyEvent } from 'node-global-key-listener'
 
 // Custom APIs for renderer
 const api = {}
@@ -11,6 +12,12 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
+    contextBridge.exposeInMainWorld('electronAPI', {
+      setHotkeyListeners: (hotkey: string) => ipcRenderer.send('set-hotkey-listeners', hotkey),
+      onHotkeyEvent: (callback: (state: IGlobalKeyEvent['state']) => void) => {
+        ipcRenderer.on('hotkey-event', (_, state: IGlobalKeyEvent['state']) => callback(state))
+      },
+    })
   } catch (error) {
     console.error(error)
   }

@@ -28,7 +28,8 @@
     "@huggingface/hub": "^2.2.0",
     "@huggingface/transformers": "^3.5.2",
     "audiobuffer-to-wav": "^1.0.0",
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "node-global-key-listener": "^0.3.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

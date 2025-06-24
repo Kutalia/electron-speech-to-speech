@@ -1,7 +1,8 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, shell, session } from 'electron'
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
+import { addHotkeyListeners } from './key-listener'
 
 function createWindow(): void {
   // Create the browser window.
@@ -15,6 +16,16 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
+  })
+
+  ipcMain.on('set-hotkey-listeners', (_, hotkey: string) => {
+    addHotkeyListeners({
+      hotkey,
+      callbacks: {
+        DOWN: () => mainWindow.webContents.send('hotkey-event', 'DOWN'),
+        UP: () => mainWindow.webContents.send('hotkey-event', 'UP'),
+      }
+    })
   })
 
   mainWindow.on('ready-to-show', () => {

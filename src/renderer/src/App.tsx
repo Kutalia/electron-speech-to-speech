@@ -1,11 +1,11 @@
 import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput } from '@huggingface/transformers'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
 import { SelectLanguage } from './components/SelectLanguage'
 import Versions from './components/Versions'
 import { useWorker } from './hooks/useWorker'
-import { SAMPLING_RATE } from './utils/constants'
+import { DEFAULT_HOTKEY, SAMPLING_RATE } from './utils/constants'
 import { getLanguages, getTranslationModels } from './utils/helpers'
 
 function App(): React.JSX.Element {
@@ -13,6 +13,7 @@ function App(): React.JSX.Element {
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
   const { isReady, execTask, languages: savedLanguages } = useWorker()
+  const [isRecording, setIsRecording] = useState(false)
 
   const onRecordingComplete = useCallback(async (blob: Blob) => {
     const audioContext = new AudioContext({
@@ -48,6 +49,13 @@ function App(): React.JSX.Element {
 
   const allLanguages = useMemo(getLanguages, [])
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
+
+  useEffect(() => {
+    window.electronAPI.setHotkeyListeners(DEFAULT_HOTKEY)
+    window.electronAPI.onHotkeyEvent((state) => {
+      setIsRecording(state === 'DOWN')
+    })
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
@@ -90,6 +98,7 @@ function App(): React.JSX.Element {
           outputDeviceId={outputDevice}
           onRecordingComplete={onRecordingComplete}
           ttsResult={ttsResult}
+          hotkeyPressed={isRecording}
         />
       </div>
       <div className="bg-white p-2 rounded-md">

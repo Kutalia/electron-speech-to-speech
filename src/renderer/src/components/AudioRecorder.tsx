@@ -8,10 +8,11 @@ interface Props {
   outputDeviceId: MediaDeviceInfo['deviceId']
   onRecordingComplete: (blob: Blob) => void
   ttsResult: TextToAudioOutput | undefined
+  hotkeyPressed: boolean
 }
 
-export const AudioRecorder: React.FC<Props> = ({ inputDeviceId, outputDeviceId, onRecordingComplete, ttsResult }) => {
-  const [isRecording, setIsRecording] = useState(false)
+export const AudioRecorder: React.FC<Props> = ({ inputDeviceId, outputDeviceId, onRecordingComplete, ttsResult, hotkeyPressed }) => {
+  const [isRecording, setIsRecording] = useState(hotkeyPressed)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder>()
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [recordedAudioEl, setRecordedAudioEl] = useState<HTMLAudioElement | null>()
@@ -19,6 +20,23 @@ export const AudioRecorder: React.FC<Props> = ({ inputDeviceId, outputDeviceId, 
   const [synthesizedWavUrl, setSynthesizedWavUrl] = useState<any>()
 
   const audioChunksRef = useRef<Blob[]>([])
+
+  const handleRecorderClick = () => {
+    setIsRecording((prevState) => !prevState)
+  }
+  
+  useEffect(() => {
+    if (isRecording) {
+      setRecordedBlob(null)
+      mediaRecorder?.start()
+    } else {
+      mediaRecorder?.stop()
+    }
+  }, [mediaRecorder, isRecording])
+
+  useEffect(() => {
+    setIsRecording(hotkeyPressed)
+  }, [hotkeyPressed])
 
   useEffect(() => {
     const initRecorder = async () => {
@@ -94,17 +112,6 @@ export const AudioRecorder: React.FC<Props> = ({ inputDeviceId, outputDeviceId, 
       }
     }
   }, [synthesizedWavUrl])
-
-  const handleRecorderClick = () => {
-    if (!isRecording) {
-      setRecordedBlob(null)
-      mediaRecorder?.start()
-    } else {
-      mediaRecorder?.stop()
-    }
-
-    setIsRecording((prevState) => !prevState)
-  }
 
   return <div className="flex flex-col gap-2">
     <button
