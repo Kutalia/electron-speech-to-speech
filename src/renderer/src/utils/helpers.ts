@@ -3,7 +3,9 @@ import * as tts from '@diffusionstudio/vits-web';
 
 import { SAMPLING_RATE } from "./constants";
 import whisperLanguages from './whisper-languages.json'
-import opusModels from './opus-models.json'
+import { listOpusModels } from "./listOpusModels";
+
+const opusModels = await listOpusModels()
 
 env.allowLocalModels = false
 
@@ -87,12 +89,25 @@ export function getTranslationModels() {
   const modelList = opusModels.filter((m) => m.split('/')[1].length === 13)
   let models = new Map<string, string>()
 
-  const searchStr = 'mt-'
+  const separator = 'mt-'
 
-  modelList.forEach((model) => {
-    models.set(model.slice(model.indexOf(searchStr) + searchStr.length), model)
+  modelList.forEach((m) => {
+    const langPair = m.split(separator)[1]
+    const isXenovaModel = m.includes('Xenova')
+    const isOnnxCommunityModel = m.includes('onnx-community')
+
+    if (!(isOnnxCommunityModel || isXenovaModel)) {
+      // Only allow Xenova or onnx-community models which are guaranteed to run
+      return
+    }
+
+    if (models.get(langPair)?.includes('onnx-community') && isXenovaModel) {
+      // Do not let Xenova models replace onnx-community quality which come with q4 decoders
+      return
+    }
+
+    models.set(langPair, m)
   })
-
   return models
 }
 

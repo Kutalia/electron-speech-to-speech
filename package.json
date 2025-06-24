@@ -25,6 +25,7 @@
     "@diffusionstudio/vits-web": "^1.0.3",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
+    "@huggingface/hub": "^2.2.0",
     "@huggingface/transformers": "^3.5.2",
     "audiobuffer-to-wav": "^1.0.0",
     "electron-updater": "^6.3.9"
