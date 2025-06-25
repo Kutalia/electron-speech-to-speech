@@ -2,10 +2,10 @@ import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
-import { SelectLanguage } from './components/SelectLanguage'
+import { Select } from './components/Select'
 import Versions from './components/Versions'
 import { useWorker } from './hooks/useWorker'
-import { DEFAULT_HOTKEY, SAMPLING_RATE } from './utils/constants'
+import { ALL_HOTKEYS, DEFAULT_PRIMARY_HOTKEY, DEFAULT_SECONDARY_HOTKEY, SAMPLING_RATE } from './utils/constants'
 import { getLanguages, getTranslationModels } from './utils/helpers'
 
 function App(): React.JSX.Element {
@@ -14,6 +14,8 @@ function App(): React.JSX.Element {
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
   const { isReady, execTask, languages: savedLanguages } = useWorker()
   const [isRecording, setIsRecording] = useState(false)
+  const [primaryHotkey, setPrimaryHotkey] = useState(DEFAULT_PRIMARY_HOTKEY)
+  const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(DEFAULT_SECONDARY_HOTKEY)
 
   const onRecordingComplete = useCallback(async (blob: Blob) => {
     const audioContext = new AudioContext({
@@ -51,10 +53,18 @@ function App(): React.JSX.Element {
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   useEffect(() => {
-    window.electronAPI.setHotkeyListeners(DEFAULT_HOTKEY)
+    window.electronAPI.setHotkeyListeners(primaryHotkey, secondaryHotkey)
     window.electronAPI.onHotkeyEvent((state) => {
       setIsRecording(state === 'DOWN')
     })
+  }, [primaryHotkey, secondaryHotkey])
+
+  const onPrimaryHotkeyChange = useCallback((h: string) => {
+    setPrimaryHotkey(h as typeof primaryHotkey)
+  }, [])
+
+  const onSecondaryHotkeyChange = useCallback((h: string) => {
+    setSecondaryHotkey(h as typeof secondaryHotkey)
   }, [])
 
   return (
@@ -71,13 +81,13 @@ function App(): React.JSX.Element {
 
         />
         <div className="flex gap-4 justify-stretch w-80">
-          <SelectLanguage
+          <Select
             options={allLanguages.input}
             label="Input language"
             onChange={onSrcLangChange}
             defaultValue={savedLanguages.src_lang}
           />
-          <SelectLanguage
+          <Select
             options={allLanguages.output}
             disabledOptions={allLanguages.output
               .filter(({ value: l }) =>
@@ -88,6 +98,21 @@ function App(): React.JSX.Element {
             label="Output language"
             onChange={onTgtLangChange}
             defaultValue={savedLanguages.tgt_lang}
+          />
+        </div>
+        <div className="flex gap-4 justify-stretch w-80">
+          <Select
+            options={['', ...ALL_HOTKEYS]}
+            label="Secondary Hotkey"
+            onChange={onSecondaryHotkeyChange}
+            defaultValue={secondaryHotkey}
+          />
+          <div className="text-white self-center">+</div>
+          <Select
+            options={ALL_HOTKEYS}
+            label="Primary Hotkey"
+            onChange={onPrimaryHotkeyChange}
+            defaultValue={primaryHotkey}
           />
         </div>
       </div>

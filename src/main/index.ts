@@ -1,5 +1,6 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
+import { IGlobalKey } from 'node-global-key-listener'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import { addHotkeyListeners } from './key-listener'
@@ -18,9 +19,10 @@ function createWindow(): void {
     }
   })
 
-  ipcMain.on('set-hotkey-listeners', (_, hotkey: string) => {
+  ipcMain.on('set-hotkey-listeners', (_, primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) => {
     addHotkeyListeners({
-      hotkey,
+      primaryHotkey,
+      secondaryHotkey,
       callbacks: {
         DOWN: () => mainWindow.webContents.send('hotkey-event', 'DOWN'),
         UP: () => mainWindow.webContents.send('hotkey-event', 'UP'),

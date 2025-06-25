@@ -1,4 +1,5 @@
 import { PretrainedModelOptions } from "@huggingface/transformers"
+import { IGlobalKey } from "node-global-key-listener"
 
 export const SAMPLING_RATE = 16000
 
@@ -43,4 +44,23 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
 export const DEFAULT_SRC_LANG = 'en'
 export const DEFAULT_TGT_LANG = 'fr'
 
-export const DEFAULT_HOTKEY = 'CAPS LOCK'
+export const DEFAULT_PRIMARY_HOTKEY: IGlobalKey = 'CAPS LOCK'
+export const DEFAULT_SECONDARY_HOTKEY: IGlobalKey = 'LEFT CTRL'
+
+const keyNumber: IGlobalKey[] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+const keyLetter: IGlobalKey[] = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+const keyAlphaNumeric: IGlobalKey[] = [...keyNumber, ...keyLetter]
+const keyArrows: IGlobalKey[] = ["UP ARROW", "DOWN ARROW", "LEFT ARROW", "RIGHT ARROW"]
+const keyNumpadNumbers: IGlobalKey[] = ["NUMPAD 0", "NUMPAD 1", "NUMPAD 2", "NUMPAD 3", "NUMPAD 4", "NUMPAD 5", "NUMPAD 6", "NUMPAD 7", "NUMPAD 8", "NUMPAD 9"]
+const keyNumpadSpecials: IGlobalKey[] = ["NUMPAD EQUALS", "NUMPAD DIVIDE", "NUMPAD MULTIPLY", "NUMPAD MINUS", "NUMPAD PLUS", "NUMPAD RETURN", "NUMPAD DOT"]
+const keyNumpad: IGlobalKey[] = [...keyNumpadNumbers, ...keyNumpadSpecials]
+const keyModifiers: IGlobalKey[] = ["LEFT META", "RIGHT META", "LEFT CTRL", "RIGHT CTRL", "LEFT ALT", "RIGHT ALT", "LEFT SHIFT", "RIGHT SHIFT", "CAPS LOCK", "NUM LOCK", "SCROLL LOCK", "FN"]
+const keyFXX: IGlobalKey[] = ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24"]
+const keySym: IGlobalKey[] = ["EQUALS", "MINUS", "SQUARE BRACKET OPEN", "SQUARE BRACKET CLOSE", "SEMICOLON", "QUOTE", "BACKSLASH", "COMMA", "DOT", "FORWARD SLASH"]
+const keyButtons: IGlobalKey[] = ["SPACE", "BACKSPACE", "RETURN", "ESCAPE", "BACKTICK", "SECTION", "DELETE", "TAB"]
+const keySpecials: IGlobalKey[] = [...keyFXX, ...keySym, ...keyButtons]
+const keyRareUse: IGlobalKey[] = ["INS", "NUMPAD CLEAR", "PRINT SCREEN"]
+const scrollKeys: IGlobalKey[] = ["PAGE UP", "PAGE DOWN", "HOME", "END"]
+const keyMouseButton: IGlobalKey[] = ["MOUSE LEFT", "MOUSE RIGHT", "MOUSE MIDDLE", "MOUSE X1", "MOUSE X2"]
+
+export const ALL_HOTKEYS = [...keyAlphaNumeric, ...keyArrows, ...keyModifiers, ...keyMouseButton, ...keySpecials, ...keyNumpad, ...scrollKeys, ...keyRareUse]

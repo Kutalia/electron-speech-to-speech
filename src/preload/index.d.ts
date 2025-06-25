@@ -5,7 +5,7 @@ declare global {
     electron: ElectronAPI
     api: unknown
     electronAPI: {
-      setHotkeyListeners: (hotkey: string) => void
+      setHotkeyListeners: (primaryHotkey: string, secondaryHotkey: string) => void
       onHotkeyEvent: (callback: (state: 'DOWN' | 'UP') => void) => void
     }
   }
