@@ -1,15 +1,22 @@
-import { AutomaticSpeechRecognitionOutput, pipeline, TextToAudioOutput, TranslationOutput, TranslationPipeline } from "@huggingface/transformers";
-
 import {
-  DEFAULT_SRC_LANG, DEFAULT_TGT_LANG,
-  STT_MODEL_OPTIONS
-} from "./utils/constants";
-import { getLangNameByCode, getTranslationModels } from "./utils/helpers";
-import { synthesizeWithVits } from "./utils/textToSpeechVits";
+  AutomaticSpeechRecognitionOutput,
+  pipeline,
+  TextToAudioOutput,
+  TranslationOutput,
+  TranslationPipeline
+} from '@huggingface/transformers'
 
-const transcribe = await pipeline('automatic-speech-recognition', STT_MODEL_OPTIONS['small'].model, STT_MODEL_OPTIONS['small'].options)
+import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, STT_MODEL_OPTIONS } from './utils/constants'
+import { getLangNameByCode, getTranslationModels } from './utils/helpers'
+import { synthesizeWithVits } from './utils/textToSpeechVits'
 
-type ChangeTranslationLanguagesParams = Partial<{ src_lang: string, tgt_lang: string }>
+const transcribe = await pipeline(
+  'automatic-speech-recognition',
+  STT_MODEL_OPTIONS['small'].model,
+  STT_MODEL_OPTIONS['small'].options
+)
+
+type ChangeTranslationLanguagesParams = Partial<{ src_lang: string; tgt_lang: string }>
 
 let translate: TranslationPipeline
 let saved_src_lang = DEFAULT_SRC_LANG
@@ -17,16 +24,22 @@ let saved_tgt_lang = DEFAULT_TGT_LANG
 
 const getSavedLanguages = () => ({ src_lang: saved_src_lang, tgt_lang: saved_tgt_lang })
 
-const setTranslationPipeline = async ({ src_lang = saved_src_lang, tgt_lang = saved_tgt_lang }: ChangeTranslationLanguagesParams) => {
+const setTranslationPipeline = async ({
+  src_lang = saved_src_lang,
+  tgt_lang = saved_tgt_lang
+}: ChangeTranslationLanguagesParams) => {
   if (translate) {
     await translate.dispose()
   }
 
   const model = getTranslationModels().get(`${src_lang}-${tgt_lang}`) as string
 
-  translate = await pipeline<'translation'>('translation',
+  translate = await pipeline<'translation'>(
+    'translation',
     model,
-    model.indexOf('Xenova') === -1 ? { device: 'webgpu', dtype: 'q4' } : { device: 'wasm', dtype: 'fp32' }
+    model.indexOf('Xenova') === -1
+      ? { device: 'webgpu', dtype: 'q4' }
+      : { device: 'wasm', dtype: 'fp32' }
   )
 
   saved_src_lang = src_lang
@@ -34,14 +47,14 @@ const setTranslationPipeline = async ({ src_lang = saved_src_lang, tgt_lang = sa
 
   self.postMessage({
     status: 'languages-changed',
-    data: getSavedLanguages(),
+    data: getSavedLanguages()
   })
 }
 
 await setTranslationPipeline({})
 
 self.postMessage({
-  status: 'ready',
+  status: 'ready'
 })
 
 self.addEventListener('message', async (event) => {
@@ -53,7 +66,7 @@ self.addEventListener('message', async (event) => {
     | AutomaticSpeechRecognitionOutput
     | AutomaticSpeechRecognitionOutput[]
     | TextToAudioOutput
-    | { src_lang: string, tgt_lang: string }
+    | { src_lang: string; tgt_lang: string }
 
   switch (message.task) {
     case 'translation': {
@@ -63,7 +76,7 @@ self.addEventListener('message', async (event) => {
     case 'automatic-speech-recognition': {
       result = await transcribe(message.data, {
         language: getLangNameByCode(saved_src_lang) as string,
-        task: 'transcribe',
+        task: 'transcribe'
       })
 
       break
@@ -84,12 +97,13 @@ self.addEventListener('message', async (event) => {
 
       break
     }
-    default: break
+    default:
+      break
   }
 
   self.postMessage({
     status: 'complete',
     task: message.task,
-    data: result!,
+    data: result!
   })
 })

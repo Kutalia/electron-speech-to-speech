@@ -19,16 +19,19 @@ function createWindow(): void {
     }
   })
 
-  ipcMain.on('set-hotkey-listeners', (_, primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) => {
-    addHotkeyListeners({
-      primaryHotkey,
-      secondaryHotkey,
-      callbacks: {
-        DOWN: () => mainWindow.webContents.send('hotkey-event', 'DOWN'),
-        UP: () => mainWindow.webContents.send('hotkey-event', 'UP'),
-      }
-    })
-  })
+  ipcMain.on(
+    'set-hotkey-listeners',
+    (_, primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) => {
+      addHotkeyListeners({
+        primaryHotkey,
+        secondaryHotkey,
+        callbacks: {
+          DOWN: () => mainWindow.webContents.send('hotkey-event', 'DOWN'),
+          UP: () => mainWindow.webContents.send('hotkey-event', 'UP')
+        }
+      })
+    }
+  )
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -63,7 +66,7 @@ app.whenReady().then(() => {
         responseHeaders: {
           ...details.responseHeaders,
           'Cross-Origin-Opener-Policy': ['same-origin'],
-          'Cross-Origin-Embedder-Policy': ['require-corp'],
+          'Cross-Origin-Embedder-Policy': ['require-corp']
         }
       })
     })

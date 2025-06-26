@@ -13,10 +13,11 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
     contextBridge.exposeInMainWorld('electronAPI', {
-      setHotkeyListeners: (primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) => ipcRenderer.send('set-hotkey-listeners', primaryHotkey, secondaryHotkey),
+      setHotkeyListeners: (primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) =>
+        ipcRenderer.send('set-hotkey-listeners', primaryHotkey, secondaryHotkey),
       onHotkeyEvent: (callback: (state: IGlobalKeyEvent['state']) => void) => {
         ipcRenderer.on('hotkey-event', (_, state: IGlobalKeyEvent['state']) => callback(state))
-      },
+      }
     })
   } catch (error) {
     console.error(error)

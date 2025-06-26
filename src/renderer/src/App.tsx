@@ -1,11 +1,20 @@
-import { AutomaticSpeechRecognitionOutput, TextToAudioOutput, TranslationOutput } from '@huggingface/transformers'
+import {
+  AutomaticSpeechRecognitionOutput,
+  TextToAudioOutput,
+  TranslationOutput
+} from '@huggingface/transformers'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
 import { Select } from './components/Select'
 import Versions from './components/Versions'
 import { useWorker } from './hooks/useWorker'
-import { ALL_HOTKEYS, DEFAULT_PRIMARY_HOTKEY, DEFAULT_SECONDARY_HOTKEY, SAMPLING_RATE } from './utils/constants'
+import {
+  ALL_HOTKEYS,
+  DEFAULT_PRIMARY_HOTKEY,
+  DEFAULT_SECONDARY_HOTKEY,
+  SAMPLING_RATE
+} from './utils/constants'
 import { getLanguages, getTranslationModels } from './utils/helpers'
 
 function App(): React.JSX.Element {
@@ -15,39 +24,58 @@ function App(): React.JSX.Element {
   const { isReady, execTask, languages: savedLanguages } = useWorker()
   const [isRecording, setIsRecording] = useState(false)
   const [primaryHotkey, setPrimaryHotkey] = useState(DEFAULT_PRIMARY_HOTKEY)
-  const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(DEFAULT_SECONDARY_HOTKEY)
+  const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(
+    DEFAULT_SECONDARY_HOTKEY
+  )
 
-  const onRecordingComplete = useCallback(async (blob: Blob) => {
-    const audioContext = new AudioContext({
-      sampleRate: SAMPLING_RATE,
-    })
+  const onRecordingComplete = useCallback(
+    async (blob: Blob) => {
+      const audioContext = new AudioContext({
+        sampleRate: SAMPLING_RATE
+      })
 
-    const arrayBuffer = await blob.arrayBuffer()
+      const arrayBuffer = await blob.arrayBuffer()
 
-    // Since MediaRecorder saves encoded audio data, we need to decode it to raw PCM
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-    const pcm = audioBuffer.getChannelData(0)
+      // Since MediaRecorder saves encoded audio data, we need to decode it to raw PCM
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const pcm = audioBuffer.getChannelData(0)
 
-    const transcriptionResult = await execTask({ task: 'automatic-speech-recognition', data: pcm }) as AutomaticSpeechRecognitionOutput
-    // @ts-ignore
-    const text = transcriptionResult.text
+      const transcriptionResult = (await execTask({
+        task: 'automatic-speech-recognition',
+        data: pcm
+      })) as AutomaticSpeechRecognitionOutput
+      const text = transcriptionResult.text
 
-    const translationResult = await execTask({ task: 'translation', data: text }) as TranslationOutput
-    const translatedText = translationResult.map((t) => t.translation_text).join('')
-    console.log({ text, translatedText })
+      const translationResult = (await execTask({
+        task: 'translation',
+        data: text
+      })) as TranslationOutput
+      const translatedText = translationResult.map((t) => t.translation_text).join('')
+      console.log({ text, translatedText })
 
-    const synthesizingResult = await execTask({ task: 'text-to-audio', data: translatedText }) as TextToAudioOutput
-    setTtsResult(synthesizingResult)
-    console.log({ synthesizingResult })
-  }, [execTask])
+      const synthesizingResult = (await execTask({
+        task: 'text-to-audio',
+        data: translatedText
+      })) as TextToAudioOutput
+      setTtsResult(synthesizingResult)
+      console.log({ synthesizingResult })
+    },
+    [execTask]
+  )
 
-  const onSrcLangChange = useCallback((src_lang: string) => {
-    execTask({ task: 'change-languages', data: { src_lang } })
-  }, [execTask])
+  const onSrcLangChange = useCallback(
+    (src_lang: string) => {
+      execTask({ task: 'change-languages', data: { src_lang } })
+    },
+    [execTask]
+  )
 
-  const onTgtLangChange = useCallback((tgt_lang: string) => {
-    execTask({ task: 'change-languages', data: { tgt_lang } })
-  }, [execTask])
+  const onTgtLangChange = useCallback(
+    (tgt_lang: string) => {
+      execTask({ task: 'change-languages', data: { tgt_lang } })
+    },
+    [execTask]
+  )
 
   const allLanguages = useMemo(getLanguages, [])
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
@@ -70,16 +98,8 @@ function App(): React.JSX.Element {
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
       <div className="flex flex-col items-center gap-8">
-        <DeviceSelect
-          kind="audioinput"
-          onChange={setInputDevice}
-
-        />
-        <DeviceSelect
-          kind="audiooutput"
-          onChange={setOutputDevice}
-
-        />
+        <DeviceSelect kind="audioinput" onChange={setInputDevice} />
+        <DeviceSelect kind="audiooutput" onChange={setOutputDevice} />
         <div className="flex gap-4 justify-stretch w-80">
           <Select
             options={allLanguages.input}
@@ -90,11 +110,11 @@ function App(): React.JSX.Element {
           <Select
             options={allLanguages.output}
             disabledOptions={allLanguages.output
-              .filter(({ value: l }) =>
-                !translationModelsPairs.find((p) => p === `${savedLanguages.src_lang}-${l}`)
+              .filter(
+                ({ value: l }) =>
+                  !translationModelsPairs.find((p) => p === `${savedLanguages.src_lang}-${l}`)
               )
-              .map((v) => v.value)
-            }
+              .map((v) => v.value)}
             label="Output language"
             onChange={onTgtLangChange}
             defaultValue={savedLanguages.tgt_lang}

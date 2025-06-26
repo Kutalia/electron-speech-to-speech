@@ -1,6 +1,6 @@
-import * as tts from '@diffusionstudio/vits-web';
-import { getLangNameByCode, getVoiceIdByLangCode, getVoices } from './helpers';
-import { WavDecoder } from "./wavDecoder";
+import * as tts from '@diffusionstudio/vits-web'
+import { getLangNameByCode, getVoiceIdByLangCode, getVoices } from './helpers'
+import { WavDecoder } from './wavDecoder'
 
 export const synthesizeWithVits = async (text: string, langCode: string) => {
   let tryCount = 0
@@ -13,8 +13,8 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
     try {
       wav = await tts.predict({
         text,
-        voiceId: getVoiceIdByLangCode(langCode, tryCount) as tts.VoiceId,
-      });
+        voiceId: getVoiceIdByLangCode(langCode, tryCount) as tts.VoiceId
+      })
 
       break
     } catch (err) {
@@ -25,7 +25,7 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
   if (!wav.size) {
     return {
       audio: new Float32Array(),
-      sampling_rate: 0,
+      sampling_rate: 0
     }
   }
 
@@ -33,6 +33,6 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
 
   return {
     audio: decoded.channelData[0],
-    sampling_rate: decoded.sampleRate,
+    sampling_rate: decoded.sampleRate
   }
 }

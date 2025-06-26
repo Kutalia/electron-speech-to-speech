@@ -19,6 +19,6 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     worker: {
       format: 'es' // https://github.com/vitejs/vite/issues/18585#issuecomment-2459681237
-    },
+    }
   }
 })

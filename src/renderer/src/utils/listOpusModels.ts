@@ -1,4 +1,4 @@
-import * as hub from "@huggingface/hub"
+import * as hub from '@huggingface/hub'
 import opusModels from './opus-models.json'
 
 const accessToken = import.meta.env.VITE_HUGGING_FACE_TOKEN

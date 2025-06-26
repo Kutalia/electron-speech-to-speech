@@ -1,9 +1,9 @@
-import { env } from "@huggingface/transformers";
-import * as tts from '@diffusionstudio/vits-web';
+import { env } from '@huggingface/transformers'
+import * as tts from '@diffusionstudio/vits-web'
 
-import { SAMPLING_RATE } from "./constants";
+import { SAMPLING_RATE } from './constants'
 import whisperLanguages from './whisper-languages.json'
-import { listOpusModels } from "./listOpusModels";
+import { listOpusModels } from './listOpusModels'
 
 const opusModels = await listOpusModels()
 
@@ -18,30 +18,24 @@ function firstLetterUpperCase(str: string) {
 }
 
 export function getMimeType() {
-  const types = [
-    "audio/webm",
-    "audio/mp4",
-    "audio/ogg",
-    "audio/wav",
-    "audio/aac",
-  ];
+  const types = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/aac']
   for (let i = 0; i < types.length; i++) {
     if (MediaRecorder.isTypeSupported(types[i])) {
-      return types[i];
+      return types[i]
     }
   }
-  return undefined;
+  return undefined
 }
 
 export function getMediaStream(deviceId: MediaDeviceInfo['deviceId']) {
   return navigator.mediaDevices.getUserMedia({
     audio: {
       deviceId: {
-        exact: deviceId,
+        exact: deviceId
       },
       sampleRate: SAMPLING_RATE,
-      channelCount: 1,
-    },
+      channelCount: 1
+    }
   })
 }
 
@@ -119,11 +113,11 @@ export function getLanguages() {
 
   const languageCodes = {
     input: Array.from(new Set(inputTranslationLangs.filter(getLangNameByCode))),
-    output: Array.from(new Set(outputTranslationLangs.filter(getLangNameByCode))),
+    output: Array.from(new Set(outputTranslationLangs.filter(getLangNameByCode)))
   }
 
   return {
     input: languageCodes.input.map((l) => ({ value: l, label: getLangNameByCode(l) as string })),
-    output: languageCodes.output.map((l) => ({ value: l, label: getLangNameByCode(l) as string })),
+    output: languageCodes.output.map((l) => ({ value: l, label: getLangNameByCode(l) as string }))
   }
 }

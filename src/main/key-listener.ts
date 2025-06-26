@@ -1,7 +1,16 @@
-import { GlobalKeyboardListener, IGlobalKey, IGlobalKeyEvent, IGlobalKeyListener } from "node-global-key-listener"
+import {
+  GlobalKeyboardListener,
+  IGlobalKey,
+  IGlobalKeyEvent,
+  IGlobalKeyListener
+} from 'node-global-key-listener'
 
 type Callbacks = Record<IGlobalKeyEvent['state'], () => void>
-export type AddHotkeyListenersParams = { primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey, callbacks: Callbacks }
+export type AddHotkeyListenersParams = {
+  primaryHotkey: IGlobalKey
+  secondaryHotkey: IGlobalKey
+  callbacks: Callbacks
+}
 
 type AddListeners = (params: AddHotkeyListenersParams) => void
 
@@ -19,9 +28,9 @@ export const addHotkeyListeners: AddListeners = ({ primaryHotkey, secondaryHotke
   for (const state in callbacks) {
     listeners.push((e, down) => {
       if (
-        e.state == state
-        && (e.state === 'UP' || secondaryHotkey === '' || down[secondaryHotkey])
-        && e.name === primaryHotkey
+        e.state == state &&
+        (e.state === 'UP' || secondaryHotkey === '' || down[secondaryHotkey]) &&
+        e.name === primaryHotkey
       ) {
         callbacks[state]()
       }
