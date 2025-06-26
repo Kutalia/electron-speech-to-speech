@@ -1,10 +1,21 @@
 import {
   AutomaticSpeechRecognitionOutput,
+  AutomaticSpeechRecognitionPipeline,
   pipeline,
   TextToAudioOutput,
   TranslationOutput,
   TranslationPipeline
 } from '@huggingface/transformers'
+
+import {
+  DEFAULT_SRC_LANG,
+  DEFAULT_STT_MODEL_OPTION,
+  DEFAULT_TGT_LANG,
+  STT_MODEL_OPTIONS,
+  WhisperModelSizes
+} from './utils/constants'
+import { getLangNameByCode, getTranslationModels } from './utils/helpers'
+import { synthesizeWithVits } from './utils/textToSpeechVits'
 
 export type ExecTaskResultData =
   | TranslationOutput
@@ -21,19 +32,33 @@ export type ExecTaskResult = {
     | 'automatic-speech-recognition'
     | 'change-languages'
     | 'get-languages'
-  data: ExecTaskResultData
+  data: ExecTaskResultData | null
   status: string
 }
 
-import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, STT_MODEL_OPTIONS } from './utils/constants'
-import { getLangNameByCode, getTranslationModels } from './utils/helpers'
-import { synthesizeWithVits } from './utils/textToSpeechVits'
+let transcribe: AutomaticSpeechRecognitionPipeline
+let savedModelOption = DEFAULT_STT_MODEL_OPTION
 
-const transcribe = await pipeline(
-  'automatic-speech-recognition',
-  STT_MODEL_OPTIONS['small'].model,
-  STT_MODEL_OPTIONS['small'].options
-)
+const setTranscriptionPipeline = async (modelOption: WhisperModelSizes = savedModelOption) => {
+  if (transcribe) {
+    await transcribe.dispose()
+  }
+
+  savedModelOption = modelOption
+
+  transcribe = await pipeline<'automatic-speech-recognition'>(
+    'automatic-speech-recognition',
+    STT_MODEL_OPTIONS[modelOption].model,
+    STT_MODEL_OPTIONS[modelOption].options
+  )
+
+  self.postMessage({
+    status: 'stt-model-changed',
+    data: modelOption
+  })
+}
+
+await setTranscriptionPipeline()
 
 type ChangeTranslationLanguagesParams = Partial<{ src_lang: string; tgt_lang: string }>
 
@@ -79,7 +104,7 @@ self.postMessage({
 self.addEventListener('message', async (event) => {
   const message = event.data
 
-  let result: ExecTaskResultData
+  let result: ExecTaskResultData | null = null
 
   switch (message.task) {
     case 'translation': {
@@ -110,6 +135,11 @@ self.addEventListener('message', async (event) => {
 
       break
     }
+    case 'change-stt-model': {
+      await setTranscriptionPipeline(message.data)
+
+      break
+    }
     default:
       break
   }
@@ -117,6 +147,6 @@ self.addEventListener('message', async (event) => {
   self.postMessage({
     status: 'complete',
     task: message.task,
-    data: result!
+    data: result
   } as ExecTaskResult)
 })

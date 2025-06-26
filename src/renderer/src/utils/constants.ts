@@ -3,7 +3,15 @@ import { IGlobalKey } from 'node-global-key-listener'
 
 export const SAMPLING_RATE = 16000
 
-type WhisperModelSizes = 'small' | 'medium' | 'large'
+export enum WhisperModelSizeOptions {
+  TINY = 'tiny',
+  BASE = 'base',
+  SMALL = 'small',
+  MEDIUM = 'medium',
+  LARGE = 'large'
+}
+
+export type WhisperModelSizes = `${WhisperModelSizeOptions}`
 
 type STT_MODEL_OPTIONS_TYPE = {
   [k in WhisperModelSizes]: {
@@ -13,10 +21,25 @@ type STT_MODEL_OPTIONS_TYPE = {
 }
 
 export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
+  tiny: {
+    model: 'onnx-community/whisper-tiny-ONNX',
+    options: {
+      device: 'webgpu',
+      dtype: 'fp32'
+    }
+  },
+  base: {
+    model: 'onnx-community/whisper-base',
+    options: {
+      device: 'webgpu',
+      dtype: 'fp32'
+    }
+  },
   small: {
     model: 'onnx-community/whisper-small',
     options: {
-      device: 'webgpu'
+      device: 'webgpu',
+      dtype: 'fp32'
     }
   },
   medium: {
@@ -42,6 +65,8 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
     }
   }
 }
+
+export const DEFAULT_STT_MODEL_OPTION: WhisperModelSizes = 'small'
 
 export const DEFAULT_SRC_LANG = 'en'
 export const DEFAULT_TGT_LANG = 'fr'

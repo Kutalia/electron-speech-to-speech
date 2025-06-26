@@ -13,7 +13,9 @@ import {
   ALL_HOTKEYS,
   DEFAULT_PRIMARY_HOTKEY,
   DEFAULT_SECONDARY_HOTKEY,
-  SAMPLING_RATE
+  SAMPLING_RATE,
+  WhisperModelSizeOptions,
+  WhisperModelSizes
 } from './utils/constants'
 import { getLanguages, getTranslationModels } from './utils/helpers'
 
@@ -21,7 +23,7 @@ function App(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
-  const { isReady, execTask, languages: savedLanguages } = useWorker()
+  const { isReady, execTask, languages: savedLanguages, sttModel } = useWorker()
   const [isRecording, setIsRecording] = useState(false)
   const [primaryHotkey, setPrimaryHotkey] = useState(DEFAULT_PRIMARY_HOTKEY)
   const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(
@@ -95,6 +97,13 @@ function App(): React.JSX.Element {
     setSecondaryHotkey(h as typeof secondaryHotkey)
   }, [])
 
+  const onSttModelChange = useCallback(
+    (model: string) => {
+      execTask({ task: 'change-stt-model', data: model as WhisperModelSizes })
+    },
+    [execTask]
+  )
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
       <div className="flex flex-col items-center gap-8">
@@ -133,6 +142,14 @@ function App(): React.JSX.Element {
             label="Primary Hotkey"
             onChange={onPrimaryHotkeyChange}
             defaultValue={primaryHotkey}
+          />
+        </div>
+        <div className="flex gap-4 justify-stretch w-80">
+          <Select
+            options={Object.values(WhisperModelSizeOptions)}
+            label="OpenAI Whisper Model Size"
+            onChange={onSttModelChange}
+            defaultValue={sttModel}
           />
         </div>
       </div>

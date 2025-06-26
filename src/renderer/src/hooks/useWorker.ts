@@ -1,4 +1,9 @@
-import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG } from '@renderer/utils/constants'
+import {
+  DEFAULT_SRC_LANG,
+  DEFAULT_STT_MODEL_OPTION,
+  DEFAULT_TGT_LANG,
+  WhisperModelSizes
+} from '@renderer/utils/constants'
 import { AtLeastOne } from '@renderer/utils/types'
 import { ExecTaskResult } from '@renderer/worker'
 import { useCallback, useEffect, useState } from 'react'
@@ -20,6 +25,10 @@ type ExecTaskParams =
       task: 'get-languages'
       data: { src_lang: string; tgt_lang: string }
     }
+  | {
+      task: 'change-stt-model'
+      data: WhisperModelSizes
+    }
 
 type ExecTaskResultEvent = MessageEvent<ExecTaskResult>
 
@@ -32,6 +41,7 @@ export const useWorker = () => {
     src_lang: DEFAULT_SRC_LANG,
     tgt_lang: DEFAULT_TGT_LANG
   })
+  const [sttModel, setSttModel] = useState(DEFAULT_STT_MODEL_OPTION)
 
   const execTask = useCallback(
     (params: ExecTaskParams) => {
@@ -73,6 +83,10 @@ export const useWorker = () => {
           setLanguages(message.data)
           break
         }
+        case 'stt-model-changed': {
+          setSttModel(message.data)
+          break
+        }
         default:
           break
       }
@@ -82,6 +96,7 @@ export const useWorker = () => {
   return {
     isReady,
     execTask,
-    languages
+    languages,
+    sttModel
   }
 }
