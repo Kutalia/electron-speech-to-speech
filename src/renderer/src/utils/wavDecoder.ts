@@ -14,16 +14,16 @@ interface Format {
   bitDepth: number
 }
 
-var formats = {
+const formats = {
   0x0001: 'lpcm',
   0x0003: 'lpcm'
 }
 
-function decodeSync(buffer: ArrayBuffer, opts?: Opts) {
+function decodeSync(buffer: ArrayBuffer, opts?: Opts): ReturnType<typeof decodeData> {
   opts = opts || {}
 
-  var dataView = new DataView(buffer)
-  var reader = createReader(dataView)
+  const dataView = new DataView(buffer)
+  const reader = createReader(dataView)
 
   if (reader.string(4) !== 'RIFF') {
     throw new TypeError('Invalid WAV file')
@@ -35,12 +35,12 @@ function decodeSync(buffer: ArrayBuffer, opts?: Opts) {
     throw new TypeError('Invalid WAV file')
   }
 
-  var format: null | ReturnType<typeof decodeFormat> = null
-  var audioData: null | ReturnType<typeof decodeData> = null
+  let format: null | ReturnType<typeof decodeFormat> = null
+  let audioData: null | ReturnType<typeof decodeData> = null
 
   do {
-    var chunkType = reader.string(4)
-    var chunkSize = reader.uint32()
+    const chunkType = reader.string(4)
+    const chunkSize = reader.uint32()
 
     switch (chunkType) {
       case 'fmt ':
@@ -71,13 +71,13 @@ function decode(buffer: ArrayBuffer, opts?: Opts) {
 }
 
 function decodeFormat(reader: ReturnType<typeof createReader>, chunkSize: number) {
-  var formatId = reader.uint16()
+  const formatId = reader.uint16()
 
-  if (!formats.hasOwnProperty(formatId)) {
+  if (!Object.prototype.hasOwnProperty.call(formats, formatId)) {
     return new TypeError('Unsupported format in WAV file: 0x' + formatId.toString(16))
   }
 
-  var format = {
+  const format = {
     formatId: formatId,
     floatingPoint: formatId === 0x0003,
     numberOfChannels: reader.uint16(),
@@ -99,16 +99,16 @@ function decodeData(
 ) {
   chunkSize = Math.min(chunkSize, reader.remain())
 
-  var length = Math.floor(chunkSize / format.blockSize)
-  var numberOfChannels = format.numberOfChannels
-  var sampleRate = format.sampleRate
-  var channelData = new Array(numberOfChannels)
+  const length = Math.floor(chunkSize / format.blockSize)
+  const numberOfChannels = format.numberOfChannels
+  const sampleRate = format.sampleRate
+  const channelData = new Array(numberOfChannels)
 
-  for (var ch = 0; ch < numberOfChannels; ch++) {
+  for (let ch = 0; ch < numberOfChannels; ch++) {
     channelData[ch] = new Float32Array(length)
   }
 
-  var retVal = readPCM(reader, channelData, length, format, opts)
+  const retVal = readPCM(reader, channelData, length, format, opts)
 
   if (retVal instanceof Error) {
     return retVal
@@ -129,19 +129,19 @@ function readPCM(
   format: Format,
   opts: Opts
 ) {
-  var bitDepth = format.bitDepth
-  var decoderOption = format.floatingPoint ? 'f' : opts.symmetric ? 's' : ''
-  var methodName = 'pcm' + bitDepth + decoderOption
+  const bitDepth = format.bitDepth
+  const decoderOption = format.floatingPoint ? 'f' : opts.symmetric ? 's' : ''
+  const methodName = 'pcm' + bitDepth + decoderOption
 
   if (!reader[methodName]) {
     return new TypeError('Not supported bit depth: ' + format.bitDepth)
   }
 
-  var read = reader[methodName].bind(reader)
-  var numberOfChannels = format.numberOfChannels
+  const read = reader[methodName].bind(reader)
+  const numberOfChannels = format.numberOfChannels
 
-  for (var i = 0; i < length; i++) {
-    for (var ch = 0; ch < numberOfChannels; ch++) {
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numberOfChannels; ch++) {
       channelData[ch][i] = read()
     }
   }
@@ -150,7 +150,7 @@ function readPCM(
 }
 
 function createReader(dataView: DataView) {
-  var pos = 0
+  let pos = 0
 
   return {
     remain: function () {
@@ -160,115 +160,115 @@ function createReader(dataView: DataView) {
       pos += n
     },
     uint8: function () {
-      var data = dataView.getUint8(pos)
+      const data = dataView.getUint8(pos)
 
       pos += 1
 
       return data
     },
     int16: function () {
-      var data = dataView.getInt16(pos, true)
+      const data = dataView.getInt16(pos, true)
 
       pos += 2
 
       return data
     },
     uint16: function () {
-      var data = dataView.getUint16(pos, true)
+      const data = dataView.getUint16(pos, true)
 
       pos += 2
 
       return data
     },
     uint32: function () {
-      var data = dataView.getUint32(pos, true)
+      const data = dataView.getUint32(pos, true)
 
       pos += 4
 
       return data
     },
     string: function (n) {
-      var data = ''
+      let data = ''
 
-      for (var i = 0; i < n; i++) {
+      for (let i = 0; i < n; i++) {
         data += String.fromCharCode(this.uint8())
       }
 
       return data
     },
     pcm8: function () {
-      var data = dataView.getUint8(pos) - 128
+      const data = dataView.getUint8(pos) - 128
 
       pos += 1
 
       return data < 0 ? data / 128 : data / 127
     },
     pcm8s: function () {
-      var data = dataView.getUint8(pos) - 127.5
+      const data = dataView.getUint8(pos) - 127.5
 
       pos += 1
 
       return data / 127.5
     },
     pcm16: function () {
-      var data = dataView.getInt16(pos, true)
+      const data = dataView.getInt16(pos, true)
 
       pos += 2
 
       return data < 0 ? data / 32768 : data / 32767
     },
     pcm16s: function () {
-      var data = dataView.getInt16(pos, true)
+      const data = dataView.getInt16(pos, true)
 
       pos += 2
 
       return data / 32768
     },
     pcm24: function () {
-      var x0 = dataView.getUint8(pos + 0)
-      var x1 = dataView.getUint8(pos + 1)
-      var x2 = dataView.getUint8(pos + 2)
-      var xx = x0 + (x1 << 8) + (x2 << 16)
-      var data = xx > 0x800000 ? xx - 0x1000000 : xx
+      const x0 = dataView.getUint8(pos + 0)
+      const x1 = dataView.getUint8(pos + 1)
+      const x2 = dataView.getUint8(pos + 2)
+      const xx = x0 + (x1 << 8) + (x2 << 16)
+      const data = xx > 0x800000 ? xx - 0x1000000 : xx
 
       pos += 3
 
       return data < 0 ? data / 8388608 : data / 8388607
     },
     pcm24s: function () {
-      var x0 = dataView.getUint8(pos + 0)
-      var x1 = dataView.getUint8(pos + 1)
-      var x2 = dataView.getUint8(pos + 2)
-      var xx = x0 + (x1 << 8) + (x2 << 16)
-      var data = xx > 0x800000 ? xx - 0x1000000 : xx
+      const x0 = dataView.getUint8(pos + 0)
+      const x1 = dataView.getUint8(pos + 1)
+      const x2 = dataView.getUint8(pos + 2)
+      const xx = x0 + (x1 << 8) + (x2 << 16)
+      const data = xx > 0x800000 ? xx - 0x1000000 : xx
 
       pos += 3
 
       return data / 8388608
     },
     pcm32: function () {
-      var data = dataView.getInt32(pos, true)
+      const data = dataView.getInt32(pos, true)
 
       pos += 4
 
       return data < 0 ? data / 2147483648 : data / 2147483647
     },
     pcm32s: function () {
-      var data = dataView.getInt32(pos, true)
+      const data = dataView.getInt32(pos, true)
 
       pos += 4
 
       return data / 2147483648
     },
     pcm32f: function () {
-      var data = dataView.getFloat32(pos, true)
+      const data = dataView.getFloat32(pos, true)
 
       pos += 4
 
       return data
     },
     pcm64f: function () {
-      var data = dataView.getFloat64(pos, true)
+      const data = dataView.getFloat64(pos, true)
 
       pos += 8
 

@@ -23,7 +23,7 @@ export const AudioRecorder: React.FC<Props> = ({
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [recordedAudioEl, setRecordedAudioEl] = useState<HTMLAudioElement | null>()
   const [synthesizedAudioEl, setSynthesizedAudioEl] = useState<HTMLAudioElement | null>()
-  const [synthesizedWavUrl, setSynthesizedWavUrl] = useState<any>()
+  const [synthesizedWavUrl, setSynthesizedWavUrl] = useState<string>()
 
   const audioChunksRef = useRef<Blob[]>([])
 
@@ -57,7 +57,7 @@ export const AudioRecorder: React.FC<Props> = ({
         if (recorder.state === 'inactive') {
           // Received a stop event
           if (audioChunksRef.current.length) {
-            let blob = new Blob(audioChunksRef.current, { type: recorder.mimeType })
+            const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType })
             setRecordedBlob(blob)
             onRecordingComplete(blob)
           }

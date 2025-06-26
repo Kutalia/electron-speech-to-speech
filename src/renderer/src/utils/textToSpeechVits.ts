@@ -18,6 +18,7 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
 
       break
     } catch (err) {
+      console.error(err)
       tryCount++
     }
   } while (tryCount < voiceGroup!.length)
@@ -31,8 +32,15 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
 
   const decoded = await WavDecoder.decode(await wav.arrayBuffer())
 
+  if (!(decoded instanceof Error)) {
+    return {
+      audio: decoded.channelData[0],
+      sampling_rate: decoded.sampleRate
+    }
+  }
+
   return {
-    audio: decoded.channelData[0],
-    sampling_rate: decoded.sampleRate
+    audio: [],
+    sampling_rate: 16000
   }
 }

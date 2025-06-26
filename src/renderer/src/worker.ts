@@ -6,6 +6,14 @@ import {
   TranslationPipeline
 } from '@huggingface/transformers'
 
+export type ExecTaskResultData =
+  | TranslationOutput
+  | TranslationOutput[]
+  | AutomaticSpeechRecognitionOutput
+  | AutomaticSpeechRecognitionOutput[]
+  | TextToAudioOutput
+  | { src_lang: string; tgt_lang: string }
+
 import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, STT_MODEL_OPTIONS } from './utils/constants'
 import { getLangNameByCode, getTranslationModels } from './utils/helpers'
 import { synthesizeWithVits } from './utils/textToSpeechVits'
@@ -60,13 +68,7 @@ self.postMessage({
 self.addEventListener('message', async (event) => {
   const message = event.data
 
-  let result:
-    | TranslationOutput
-    | TranslationOutput[]
-    | AutomaticSpeechRecognitionOutput
-    | AutomaticSpeechRecognitionOutput[]
-    | TextToAudioOutput
-    | { src_lang: string; tgt_lang: string }
+  let result: ExecTaskResultData
 
   switch (message.task) {
     case 'translation': {

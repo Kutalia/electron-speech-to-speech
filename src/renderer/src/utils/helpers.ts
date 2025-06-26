@@ -81,7 +81,7 @@ export function getVoiceIdByLangCode(langCode: string, index: number = 0) {
 export function getTranslationModels() {
   // Only returning "traditional" models (languages codes that contain 2 letters)
   const modelList = opusModels.filter((m) => m.split('/')[1].length === 13)
-  let models = new Map<string, string>()
+  const models = new Map<string, string>()
 
   const separator = 'mt-'
 
