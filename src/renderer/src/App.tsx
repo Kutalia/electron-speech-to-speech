@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AudioRecorder } from './components/AudioRecorder'
 import { DeviceSelect } from './components/DeviceSelect'
 import { Select } from './components/Select'
-import Versions from './components/Versions'
+import Footer from './components/Footer'
 import { useWorker } from './hooks/useWorker'
 import {
   ALL_HOTKEYS,
@@ -164,7 +164,7 @@ function App(): React.JSX.Element {
         />
       </div>
       <div className="bg-white p-2 rounded-md">
-        <Versions></Versions>
+        <Footer />
       </div>
     </div>
   )
