@@ -14,6 +14,17 @@ export type ExecTaskResultData =
   | TextToAudioOutput
   | { src_lang: string; tgt_lang: string }
 
+export type ExecTaskResult = {
+  task:
+    | 'translation'
+    | 'text-to-audio'
+    | 'automatic-speech-recognition'
+    | 'change-languages'
+    | 'get-languages'
+  data: ExecTaskResultData
+  status: string
+}
+
 import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, STT_MODEL_OPTIONS } from './utils/constants'
 import { getLangNameByCode, getTranslationModels } from './utils/helpers'
 import { synthesizeWithVits } from './utils/textToSpeechVits'
@@ -107,5 +118,5 @@ self.addEventListener('message', async (event) => {
     status: 'complete',
     task: message.task,
     data: result!
-  })
+  } as ExecTaskResult)
 })

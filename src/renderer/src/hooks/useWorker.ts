@@ -1,6 +1,6 @@
 import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG } from '@renderer/utils/constants'
 import { AtLeastOne } from '@renderer/utils/types'
-import { ExecTaskResultData } from '@renderer/worker'
+import { ExecTaskResult } from '@renderer/worker'
 import { useCallback, useEffect, useState } from 'react'
 
 type ExecTaskParams =
@@ -21,11 +21,7 @@ type ExecTaskParams =
       data: { src_lang: string; tgt_lang: string }
     }
 
-type ExecTaskResult = MessageEvent<{
-  task: ExecTaskParams['task']
-  data: ExecTaskResultData
-  status: string
-}>
+type ExecTaskResultEvent = MessageEvent<ExecTaskResult>
 
 export const useWorker = () => {
   const [worker] = useState(
@@ -48,7 +44,7 @@ export const useWorker = () => {
       worker.postMessage(params)
 
       return new Promise((resolve) => {
-        const listener = (event: ExecTaskResult) => {
+        const listener = (event: ExecTaskResultEvent) => {
           const message = event.data
 
           if (message.task === params.task && message.status === 'complete') {
