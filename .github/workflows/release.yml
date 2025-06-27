@@ -23,7 +23,7 @@ jobs:
           node-version: 22
 
       - name: Install Dependencies
-        run: npm install
+        run: npm config set arch=x64 && npm install
 
       - name: build-linux
         if: matrix.os == 'ubuntu-latest'
