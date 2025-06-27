@@ -30,7 +30,6 @@
     "@huggingface/transformers": "^3.5.2",
     "audiobuffer-to-wav": "^1.0.0",
     "electron-log": "^5.4.1",
-    "electron-progressbar": "^2.2.1",
     "electron-updater": "^6.3.9",
     "node-global-key-listener": "^0.3.0"
   },
@@ -40,7 +39,6 @@
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@tailwindcss/vite": "^4.1.10",
     "@types/audiobuffer-to-wav": "^1.0.4",
-    "@types/electron-progressbar": "^1.2.7",
     "@types/node": "^22.14.1",
     "@types/react": "^19.1.1",
     "@types/react-dom": "^19.1.2",

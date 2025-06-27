@@ -3,7 +3,6 @@
 import { autoUpdater } from 'electron-updater'
 import log from 'electron-log'
 import { dialog } from 'electron'
-import ProgressBar from 'electron-progressbar'
 
 // set autoUpdater logger method to the electron log
 autoUpdater.logger = log
@@ -23,9 +22,6 @@ export const checkAndApplyUpdates = () => {
     logger.info('There was an error with checking for updates: ' + err)
   })
 
-  // define progressBar
-  let progressBar: ProgressBar | undefined
-
   // update available
   autoUpdater.on('update-available', () => {
     logger.info('There is an update available')
@@ -39,23 +35,6 @@ export const checkAndApplyUpdates = () => {
       .then((res) => {
         if (res.response === 0) {
           autoUpdater.downloadUpdate()
-          progressBar = new ProgressBar({
-            indeterminate: false,
-            text: 'Preparing data...',
-            detail: 'Wait...',
-            abortOnError: true,
-            closeOnComplete: false,
-            browserWindow: {
-              alwaysOnTop: true
-            }
-          })
-          progressBar
-            .on('completed', function () {
-              progressBar!.detail = 'Updates has been downloaded. We are preparing your install.'
-            })
-            .on('progress', function (value) {
-              progressBar!.detail = `Value ${value} out of ${progressBar!.getOptions().maxValue}...`
-            })
         }
       })
       .catch((err) => logger.info('There has been an error downloading the update' + err))
@@ -67,8 +46,6 @@ export const checkAndApplyUpdates = () => {
     log_message = log_message + ' - Downloaded ' + progressObj.percent + '%'
     log_message = log_message + ' (' + progressObj.transferred + '/' + progressObj.total + ')'
     logger.info(log_message)
-    // Update the progress bar with the current progress
-    progressBar!.value = progressObj.percent
   })
 
   // error
@@ -78,19 +55,11 @@ export const checkAndApplyUpdates = () => {
       'An error occurred during the update process: ' + err.message
     )
     logger.error('An error occurred during the update process: ' + err.message)
-    if (progressBar) {
-      progressBar.close()
-      progressBar = undefined
-    }
   })
 
   // update downloaded
   autoUpdater.on('update-downloaded', () => {
     logger.info('Update downloaded')
-    if (progressBar) {
-      progressBar.close()
-      progressBar = undefined
-    }
     dialog
       .showMessageBox({
         type: 'info',
