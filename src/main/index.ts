@@ -4,6 +4,7 @@ import { IGlobalKey } from 'node-global-key-listener'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import { addHotkeyListeners } from './key-listener'
+import { checkAndApplyUpdates } from './updater'
 
 function createWindow(): void {
   // Create the browser window.
@@ -51,6 +52,12 @@ function createWindow(): void {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+
+  if (!is.dev) {
+    setTimeout(() => {
+      checkAndApplyUpdates()
+    }, 1500)
   }
 }
 
