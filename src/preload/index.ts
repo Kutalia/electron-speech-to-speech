@@ -3,7 +3,13 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IGlobalKey, IGlobalKeyEvent } from 'node-global-key-listener'
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+  setHotkeyListeners: (primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) =>
+    ipcRenderer.send('set-hotkey-listeners', primaryHotkey, secondaryHotkey),
+  onHotkeyEvent: (callback: (state: IGlobalKeyEvent['state']) => void) => {
+    ipcRenderer.on('hotkey-event', (_, state: IGlobalKeyEvent['state']) => callback(state))
+  }
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
@@ -12,13 +18,6 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
-    contextBridge.exposeInMainWorld('electronAPI', {
-      setHotkeyListeners: (primaryHotkey: IGlobalKey, secondaryHotkey: IGlobalKey) =>
-        ipcRenderer.send('set-hotkey-listeners', primaryHotkey, secondaryHotkey),
-      onHotkeyEvent: (callback: (state: IGlobalKeyEvent['state']) => void) => {
-        ipcRenderer.on('hotkey-event', (_, state: IGlobalKeyEvent['state']) => callback(state))
-      }
-    })
   } catch (error) {
     console.error(error)
   }

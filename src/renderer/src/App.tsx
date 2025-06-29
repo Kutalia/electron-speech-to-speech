@@ -83,8 +83,8 @@ function App(): React.JSX.Element {
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   useEffect(() => {
-    window.electronAPI.setHotkeyListeners(primaryHotkey, secondaryHotkey)
-    window.electronAPI.onHotkeyEvent((state) => {
+    window.api.setHotkeyListeners(primaryHotkey, secondaryHotkey)
+    window.api.onHotkeyEvent((state) => {
       setIsRecording(state === 'DOWN')
     })
   }, [primaryHotkey, secondaryHotkey])
