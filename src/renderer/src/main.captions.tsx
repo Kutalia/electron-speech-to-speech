@@ -2,10 +2,10 @@ import './assets/base.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import SpeechToSpeech from '@renderer/containers/SpeechToSpeech'
+import Captions from '@renderer/containers/Captions'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SpeechToSpeech />
+    <Captions />
   </StrictMode>
 )

@@ -13,9 +13,9 @@ import {
   DEFAULT_TGT_LANG,
   STT_MODEL_OPTIONS,
   WhisperModelSizes
-} from './utils/constants'
-import { getLangNameByCode, getTranslationModels } from './utils/helpers'
-import { synthesizeWithVits } from './utils/textToSpeechVits'
+} from '../utils/constants'
+import { getLangNameByCode, getTranslationModels } from '../utils/helpers'
+import { synthesizeWithVits } from '../utils/textToSpeechVits'
 
 export type ExecTaskResultData =
   | TranslationOutput

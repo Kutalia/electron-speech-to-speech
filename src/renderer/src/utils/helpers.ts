@@ -44,7 +44,8 @@ const availableVoices = await tts.voices()
 function getAvailableSpeakableLangs() {
   // Not taking translation models into account, which's list is unknown and will be tried to be fetched runtime
   return availableVoices.filter(
-    ({ language: { name_english } }) => whisperLanguages.indexOf(name_english.toLowerCase()) !== -1
+    ({ language: { name_english } }) =>
+      Object.values(whisperLanguages).indexOf(name_english.toLowerCase()) !== -1
   )
 }
 

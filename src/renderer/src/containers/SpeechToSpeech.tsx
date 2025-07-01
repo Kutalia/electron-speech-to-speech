@@ -4,11 +4,11 @@ import {
   TranslationOutput
 } from '@huggingface/transformers'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AudioRecorder } from './components/AudioRecorder'
-import { DeviceSelect } from './components/DeviceSelect'
-import { Select } from './components/Select'
-import Footer from './components/Footer'
-import { useWorker } from './hooks/useWorker'
+import { AudioRecorder } from '../components/AudioRecorder'
+import { DeviceSelect } from '../components/DeviceSelect'
+import { Select } from '../components/Select'
+import Footer from '../components/Footer'
+import { useWorker } from '../hooks/useWorker'
 import {
   ALL_HOTKEYS,
   DEFAULT_PRIMARY_HOTKEY,
@@ -16,10 +16,10 @@ import {
   SAMPLING_RATE,
   WhisperModelSizeOptions,
   WhisperModelSizes
-} from './utils/constants'
-import { getLanguages, getTranslationModels } from './utils/helpers'
+} from '../utils/constants'
+import { getLanguages, getTranslationModels } from '../utils/helpers'
 
-function App(): React.JSX.Element {
+function SpeechToSpeech(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
@@ -83,8 +83,10 @@ function App(): React.JSX.Element {
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   useEffect(() => {
+    // @ts-ignore missed preload type declaration
     window.api.setHotkeyListeners(primaryHotkey, secondaryHotkey)
-    window.api.onHotkeyEvent((state) => {
+    // @ts-ignore missed preload type declaration
+    window.api.onHotkeyEvent((state: string) => {
       setIsRecording(state === 'DOWN')
     })
   }, [primaryHotkey, secondaryHotkey])
@@ -103,6 +105,11 @@ function App(): React.JSX.Element {
     },
     [execTask]
   )
+
+  const onClickOpenCaptions = () => {
+    // @ts-ignore missed preload type declaration
+    window.api.openCaptions()
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
@@ -163,6 +170,9 @@ function App(): React.JSX.Element {
           hotkeyPressed={isRecording}
         />
       </div>
+      <button className="btn" onClick={onClickOpenCaptions}>
+        Open Captions
+      </button>
       <div className="bg-white p-2 rounded-md">
         <Footer />
       </div>
@@ -170,4 +180,4 @@ function App(): React.JSX.Element {
   )
 }
 
-export default App
+export default SpeechToSpeech

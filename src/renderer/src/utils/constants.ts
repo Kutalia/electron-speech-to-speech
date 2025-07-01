@@ -210,3 +210,6 @@ export const ALL_HOTKEYS = [
   ...scrollKeys,
   ...keyRareUse
 ]
+
+export const MAX_AUDIO_LENGTH = 30 // seconds
+export const MAX_SAMPLES = SAMPLING_RATE * MAX_AUDIO_LENGTH

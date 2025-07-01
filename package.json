@@ -1,6 +1,6 @@
 {
   "name": "electron-speech-to-speech",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "Kutalia",
@@ -24,11 +24,11 @@
   },
   "dependencies": {
     "@diffusionstudio/vits-web": "^1.0.3",
-    "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
     "@huggingface/hub": "^2.2.0",
     "@huggingface/transformers": "^3.5.2",
     "audiobuffer-to-wav": "^1.0.0",
+    "electron-audio-loopback": "^1.0.3",
     "electron-log": "^5.4.1",
     "electron-updater": "^6.3.9",
     "node-global-key-listener": "^0.3.0"

@@ -1,14 +1,29 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  session,
+  shell,
+  BrowserWindowConstructorOptions
+} from 'electron'
 import { IGlobalKey } from 'node-global-key-listener'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import { addHotkeyListeners } from './key-listener'
 import { checkAndApplyUpdates } from './updater'
+// @ts-ignore missing type declaration
+import { initMain as initAudioLoopback } from 'electron-audio-loopback'
 
-function createWindow(): void {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
+// TODO: fix loopback audio stream not working in production
+initAudioLoopback()
+
+let captionsWindow: BrowserWindow | null = null
+
+function createMainWindow(): void {
+  const htmlFileName = 'index.html'
+
+  const windowOptions: BrowserWindowConstructorOptions = {
     width: 900,
     height: 670,
     show: false,
@@ -16,9 +31,13 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: true,
+      backgroundThrottling: false
     }
-  })
+  }
+
+  // Create the browser window.
+  const win = new BrowserWindow(windowOptions)
 
   ipcMain.on(
     'set-hotkey-listeners',
@@ -27,21 +46,23 @@ function createWindow(): void {
         primaryHotkey,
         secondaryHotkey,
         callbacks: {
-          DOWN: () => mainWindow.webContents.send('hotkey-event', 'DOWN'),
-          UP: () => mainWindow.webContents.send('hotkey-event', 'UP')
+          DOWN: () => win.webContents.send('hotkey-event', 'DOWN'),
+          UP: () => win.webContents.send('hotkey-event', 'UP')
         }
       })
     }
   )
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+  ipcMain.on('open-captions', () => createCaptionsWindow())
+
+  win.on('ready-to-show', () => {
+    win.show()
     if (is.dev) {
-      mainWindow.webContents.openDevTools()
+      win.webContents.openDevTools()
     }
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
@@ -49,15 +70,72 @@ function createWindow(): void {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/${htmlFileName}`)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, `../renderer/${htmlFileName}`))
   }
 
   if (!is.dev) {
     setTimeout(() => {
       checkAndApplyUpdates()
     }, 1500)
+  }
+}
+
+function createCaptionsWindow(): void {
+  if (captionsWindow) {
+    captionsWindow.focus()
+    return
+  }
+
+  const htmlFileName = 'index.captions.html'
+
+  const windowOptions: BrowserWindowConstructorOptions = {
+    show: false,
+    autoHideMenuBar: true,
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: true,
+      backgroundThrottling: false
+    },
+    transparent: true,
+    frame: false,
+    resizable: false,
+    fullscreen: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    focusable: true, // to allow user actions like quitting and moving to another screen
+    skipTaskbar: false
+  }
+
+  // Create the browser window.
+  const win = new BrowserWindow(windowOptions)
+  captionsWindow = win
+
+  win.on('close', () => {
+    captionsWindow = null
+  })
+
+  win.setIgnoreMouseEvents(true)
+
+  win.on('ready-to-show', () => {
+    win.show()
+    win.webContents.openDevTools()
+    win.focus()
+  })
+
+  win.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url)
+    return { action: 'deny' }
+  })
+
+  // HMR for renderer base on electron-vite cli.
+  // Load the remote URL for development or the local html file for production.
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/${htmlFileName}`)
+  } else {
+    win.loadFile(join(__dirname, `../renderer/${htmlFileName}`))
   }
 }
 
@@ -89,12 +167,12 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  createWindow()
+  createMainWindow()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
   })
 })
 

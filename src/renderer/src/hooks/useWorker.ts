@@ -5,7 +5,7 @@ import {
   WhisperModelSizes
 } from '@renderer/utils/constants'
 import { AtLeastOne } from '@renderer/utils/types'
-import { ExecTaskResult } from '@renderer/worker'
+import { ExecTaskResult } from '@renderer/workers/speechToSpeechWorker'
 import { useCallback, useEffect, useState } from 'react'
 
 type ExecTaskParams =
@@ -34,7 +34,8 @@ type ExecTaskResultEvent = MessageEvent<ExecTaskResult>
 
 export const useWorker = () => {
   const [worker] = useState(
-    () => new Worker(new URL('../worker.ts', import.meta.url), { type: 'module' })
+    () =>
+      new Worker(new URL('../workers/speechToSpeechWorker.ts', import.meta.url), { type: 'module' })
   )
   const [isReady, setIsReady] = useState(false)
   const [languages, setLanguages] = useState({
