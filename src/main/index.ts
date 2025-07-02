@@ -15,7 +15,6 @@ import { checkAndApplyUpdates } from './updater'
 // @ts-ignore missing type declaration
 import { initMain as initAudioLoopback } from 'electron-audio-loopback'
 
-// TODO: fix loopback audio stream not working in production
 initAudioLoopback()
 
 let captionsWindow: BrowserWindow | null = null
@@ -121,7 +120,9 @@ function createCaptionsWindow(): void {
 
   win.on('ready-to-show', () => {
     win.show()
-    win.webContents.openDevTools()
+    if (is.dev) {
+      win.webContents.openDevTools()
+    }
     win.focus()
   })
 

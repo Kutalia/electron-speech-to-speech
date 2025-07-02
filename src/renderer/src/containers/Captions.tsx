@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { Progress } from '@renderer/components/Progress'
 // import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
@@ -13,7 +13,9 @@ interface IProgress {
 
 function Captions() {
   // Create a reference to the worker object.
-  const worker = useRef<Worker>(null)
+  const [worker] = useState(
+    () => new Worker(new URL('../workers/captionsWorker.ts', import.meta.url), { type: 'module' })
+  )
 
   const recorderRef = useRef<MediaRecorder>(null)
 
@@ -41,21 +43,14 @@ function Captions() {
   const audioContextRef = useRef<AudioContext>(null)
 
   useEffect(() => {
-    if (!status && worker.current) {
-      worker.current.postMessage({ type: 'load' })
+    if (!status) {
+      worker.postMessage({ type: 'load' })
       setStatus('loading')
     }
   }, [status, worker])
 
   // We use the `useEffect` hook to setup the worker as soon as the `App` component is mounted.
   useEffect(() => {
-    if (!worker.current) {
-      // Create the worker if it does not yet exist.
-      worker.current = new Worker(new URL('../workers/captionsWorker.ts', import.meta.url), {
-        type: 'module'
-      })
-    }
-
     // Create a callback function for messages from the worker thread.
     const onMessageReceived = (e) => {
       switch (e.data.status) {
@@ -119,13 +114,13 @@ function Captions() {
     }
 
     // Attach the callback function as an event listener.
-    worker.current.addEventListener('message', onMessageReceived)
+    worker.addEventListener('message', onMessageReceived)
 
     // Define a cleanup function for when the component is unmounted.
     return () => {
-      worker?.current?.removeEventListener('message', onMessageReceived)
+      worker.removeEventListener('message', onMessageReceived)
     }
-  }, [])
+  }, [worker])
 
   useEffect(() => {
     if (!recorderRef.current) return
@@ -148,7 +143,7 @@ function Captions() {
           audio = audio.slice(-MAX_SAMPLES)
         }
 
-        worker.current?.postMessage({
+        worker.postMessage({
           type: 'generate',
           data: { audio, language }
         })
@@ -157,7 +152,7 @@ function Captions() {
     } else {
       recorderRef.current?.requestData()
     }
-  }, [status, recording, isProcessing, chunks, language])
+  }, [status, recording, isProcessing, chunks, language, worker])
 
   useLayoutEffect(() => {
     // Make page transparent
