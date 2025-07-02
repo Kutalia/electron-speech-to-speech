@@ -1,0 +1,26 @@
+This project includes modified components from realtime-whisper-webgpu by Xenova (Apache-2.0 licensed):
+
+The following files have been used:
+
+- src/App.jsx
+- src/worker.js
+- src/LanguageSelector.jsx
+- src/Progress.jsx
+
+Inside:
+
+- src/renderer/src/containers/Captions.tsx
+- src/renderer/src/workers/captionsWorker.ts
+- src/renderer/src/components/WhisperLanguages.tsx
+- src/renderer/src/components/Progress.tsx
+
+Changes made:
+
+- Rewritten to TypeScript
+- Refactored state management
+- UX overhaul including the removal of multiple components like AudioVisualizer and description
+- Using system audio instead of microphone input
+
+Original source: https://github.com/huggingface/transformers.js-examples/tree/main/realtime-whisper-webgpu
+
+Modifications by Kote Kutalia, 2025
