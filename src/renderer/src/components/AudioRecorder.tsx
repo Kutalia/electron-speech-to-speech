@@ -34,7 +34,7 @@ export const AudioRecorder: React.FC<Props> = ({
   useEffect(() => {
     if (isRecording) {
       setRecordedBlob(null)
-      mediaRecorder?.start()
+      mediaRecorder?.start(100)
     } else {
       mediaRecorder?.stop()
     }

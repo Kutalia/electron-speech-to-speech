@@ -89,7 +89,7 @@ function Captions() {
         case 'ready':
           // Pipeline ready: the worker is ready to accept messages.
           setStatus('ready')
-          recorderRef.current?.start()
+          recorderRef.current?.start(100)
           break
 
         case 'start':
