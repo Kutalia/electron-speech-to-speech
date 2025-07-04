@@ -42,6 +42,7 @@
     "@types/node": "^24.0.10",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@types/sharedworker": "^0.0.167",
     "@vitejs/plugin-react": "^4.6.0",
     "daisyui": "^5.0.43",
     "electron": "^37.1.0",

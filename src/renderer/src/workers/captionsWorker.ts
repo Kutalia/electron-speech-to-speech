@@ -12,6 +12,22 @@ import {
 
 const MAX_NEW_TOKENS = 64
 
+const ports: MessagePort[] = []
+
+const defaultTask: 'translate' | 'transcribe' = 'translate'
+const defaultLanguage: string | null = null // Auto-detection
+
+let config = {
+  task: defaultTask,
+  language: defaultLanguage
+}
+
+const postMessageToAllPorts = (...params: Parameters<MessagePort['postMessage']>) => {
+  ports.forEach((port) => {
+    port.postMessage(...params)
+  })
+}
+
 /**
  * This class uses the Singleton pattern to ensure that only one instance of the model is loaded.
  */
@@ -43,15 +59,12 @@ class AutomaticSpeechRecognitionPipeline {
 }
 
 let processing = false
-async function generate({
-  audio
-  //  language
-}) {
+async function generate({ audio }) {
   if (processing) return
   processing = true
 
   // Tell the main thread we are starting
-  self.postMessage({ status: 'start' })
+  postMessageToAllPorts({ status: 'start' })
 
   // Retrieve the text-generation pipeline.
   const [tokenizer, processor, model] = await AutomaticSpeechRecognitionPipeline.getInstance()
@@ -67,7 +80,7 @@ async function generate({
     }
   }
   const callback_function = (output: string) => {
-    self.postMessage({
+    postMessageToAllPorts({
       status: 'update',
       output,
       tps,
@@ -87,10 +100,9 @@ async function generate({
   const outputs = await model.generate({
     ...inputs,
     max_new_tokens: MAX_NEW_TOKENS,
-    // For now, automatically detect language and translate it to English
-    // language,
+    language: config.language,
     streamer,
-    task: 'translate'
+    task: config.task
   })
 
   const decoded = tokenizer.batch_decode(outputs as number[][], {
@@ -98,7 +110,7 @@ async function generate({
   })
 
   // Send the output back to the main thread
-  self.postMessage({
+  postMessageToAllPorts({
     status: 'complete',
     output: decoded
   })
@@ -106,7 +118,7 @@ async function generate({
 }
 
 async function load() {
-  self.postMessage({
+  postMessageToAllPorts({
     status: 'loading',
     data: 'Loading model...'
   })
@@ -115,10 +127,10 @@ async function load() {
   const [, , model] = await AutomaticSpeechRecognitionPipeline.getInstance((x) => {
     // We also add a progress callback to the pipeline so that we can
     // track model loading.
-    self.postMessage(x)
+    postMessageToAllPorts(x)
   })
 
-  self.postMessage({
+  postMessageToAllPorts({
     status: 'loading',
     data: 'Compiling shaders and warming up model...'
   })
@@ -129,20 +141,33 @@ async function load() {
     input_features: full([1, 80, 3000], 0.0),
     max_new_tokens: 1
   })
-  self.postMessage({ status: 'ready' })
+  postMessageToAllPorts({ status: 'ready' })
 }
 
-// Listen for messages from the main thread
-self.addEventListener('message', async (e) => {
-  const { type, data } = e.data
+onconnect = function (event: MessageEvent) {
+  const port = event.ports[0] // In Shared Workers ports number is always 1, it just denotes the port connecting to the main thread initating the connection
+  port.start()
+  ports.push(port)
 
-  switch (type) {
-    case 'load':
-      load()
-      break
+  // Listen for messages from the main thread
+  port.addEventListener('message', (e) => {
+    const { type, data } = e.data
 
-    case 'generate':
-      generate(data)
-      break
-  }
-})
+    switch (type) {
+      case 'load':
+        load()
+        break
+
+      case 'generate':
+        generate(data)
+        break
+
+      case 'config':
+        config = data
+        break
+
+      default:
+        break
+    }
+  })
+}

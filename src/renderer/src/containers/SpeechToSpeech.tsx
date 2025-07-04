@@ -11,6 +11,7 @@ import Footer from '../components/Footer'
 import { useWorker } from '../hooks/useWorker'
 import {
   ALL_HOTKEYS,
+  BROADCAST_CHANNEL_NAME,
   DEFAULT_PRIMARY_HOTKEY,
   DEFAULT_SECONDARY_HOTKEY,
   SAMPLING_RATE,
@@ -18,6 +19,19 @@ import {
   WhisperModelSizes
 } from '../utils/constants'
 import { getLanguages, getTranslationModels } from '../utils/helpers'
+import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
+
+interface CaptionsConfig {
+  model: WhisperModelSizes
+  task: 'translate' | 'transcribe'
+  language?: string | null
+}
+
+const defaultCaptionsConfig: CaptionsConfig = {
+  model: WhisperModelSizeOptions.SMALL,
+  task: 'translate',
+  language: null
+}
 
 function SpeechToSpeech(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
@@ -29,6 +43,10 @@ function SpeechToSpeech(): React.JSX.Element {
   const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(
     DEFAULT_SECONDARY_HOTKEY
   )
+  const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel>()
+  const [isCaptionsReady, setIsCaptionsReady] = useState(false) // If captions window is ready to receive config
+  const [captionsConfig, setCaptionsConfig] = useState<CaptionsConfig>(defaultCaptionsConfig)
+  const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
 
   const onRecordingComplete = useCallback(
     async (blob: Blob) => {
@@ -83,6 +101,33 @@ function SpeechToSpeech(): React.JSX.Element {
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   useEffect(() => {
+    broadcastChannel?.addEventListener('message', (e) => {
+      if (e.data.status === 'captions_ready') {
+        setIsCaptionsReady(true)
+        // Making sure the shared worker is initiated from captions window to save memory before the latter is opened
+        setCaptionsWorker(
+          new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
+            type: 'module'
+          })
+        )
+      }
+    })
+
+    return () => {
+      broadcastChannel?.close()
+    }
+  }, [broadcastChannel])
+
+  useEffect(() => {
+    if (isCaptionsReady && captionsWorker) {
+      captionsWorker.port.postMessage({
+        type: 'config',
+        data: captionsConfig
+      })
+    }
+  }, [isCaptionsReady, captionsConfig, captionsWorker])
+
+  useEffect(() => {
     // @ts-ignore missed preload type declaration
     window.api.setHotkeyListeners(primaryHotkey, secondaryHotkey)
     // @ts-ignore missed preload type declaration
@@ -109,7 +154,22 @@ function SpeechToSpeech(): React.JSX.Element {
   const onClickOpenCaptions = () => {
     // @ts-ignore missed preload type declaration
     window.api.openCaptions()
+    setBroadcastChannel(new BroadcastChannel(BROADCAST_CHANNEL_NAME))
   }
+
+  const handleCaptionsModelChange = useCallback((model: string) => {
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      model: model as WhisperModelSizes
+    }))
+  }, [])
+
+  const handleCaptionsLanguageChange = useCallback((language: string) => {
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      language
+    }))
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
@@ -170,9 +230,34 @@ function SpeechToSpeech(): React.JSX.Element {
           hotkeyPressed={isRecording}
         />
       </div>
-      <button className="btn" onClick={onClickOpenCaptions}>
-        Open Captions
-      </button>
+      <div>
+        <Select
+          options={Object.values(WhisperModelSizeOptions)}
+          label="OpenAI Whisper Model Size for Captioning"
+          onChange={handleCaptionsModelChange}
+          defaultValue={captionsConfig.model}
+        />
+        <div className="bg-white">
+          <WhisperLanguageSelector
+            language={captionsConfig.language}
+            setLanguage={handleCaptionsLanguageChange}
+          />
+        </div>
+        <Select
+          onChange={(task) =>
+            setCaptionsConfig((prevState) => ({
+              ...prevState,
+              task: task as 'translate' | 'transcribe'
+            }))
+          }
+          options={['translate', 'transcribe']}
+          defaultValue="translate"
+          label="Caption Task"
+        />
+        <button className="btn" onClick={onClickOpenCaptions}>
+          Open Captions
+        </button>
+      </div>
       <div className="bg-white p-2 rounded-md">
         <Footer />
       </div>

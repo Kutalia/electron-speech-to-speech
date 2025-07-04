@@ -11,7 +11,7 @@ function titleCase(str: string) {
 
 export function WhisperLanguageSelector({ language, setLanguage }) {
   const handleLanguageChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
-    setLanguage(event.target.value)
+    setLanguage(event.target.value || null)
   }
 
   const names = Object.values(whisperLanguages).map(titleCase)
@@ -19,9 +19,10 @@ export function WhisperLanguageSelector({ language, setLanguage }) {
   return (
     <select
       className="border rounded-lg p-2 max-w-[100px]"
-      value={language}
+      value={language || undefined}
       onChange={handleLanguageChange}
     >
+      <option value={''}>Auto-detect</option>
       {Object.keys(whisperLanguages).map((key, i) => (
         <option key={key} value={key}>
           {names[i]}

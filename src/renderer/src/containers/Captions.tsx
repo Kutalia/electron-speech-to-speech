@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { Progress } from '@renderer/components/Progress'
 // import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
-import { MAX_SAMPLES, SAMPLING_RATE } from '@renderer/utils/constants'
+import { BROADCAST_CHANNEL_NAME, MAX_SAMPLES, SAMPLING_RATE } from '@renderer/utils/constants'
 
 interface IProgress {
   text: string
@@ -12,9 +12,11 @@ interface IProgress {
 }
 
 function Captions() {
-  // Create a reference to the worker object.
   const [worker] = useState(
-    () => new Worker(new URL('../workers/captionsWorker.ts', import.meta.url), { type: 'module' })
+    () =>
+      new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
+        type: 'module'
+      })
   )
 
   const recorderRef = useRef<MediaRecorder>(null)
@@ -42,9 +44,21 @@ function Captions() {
   // ] = useState(null)
   const audioContextRef = useRef<AudioContext>(null)
 
+  const broadcastChannel = useMemo(() => new BroadcastChannel(BROADCAST_CHANNEL_NAME), [])
+
+  useEffect(() => {
+    broadcastChannel.postMessage({
+      status: 'captions_ready'
+    })
+
+    return () => {
+      broadcastChannel?.close()
+    }
+  }, [broadcastChannel])
+
   useEffect(() => {
     if (!status) {
-      worker.postMessage({ type: 'load' })
+      worker.port.postMessage({ type: 'load' })
       setStatus('loading')
     }
   }, [status, worker])
@@ -114,11 +128,12 @@ function Captions() {
     }
 
     // Attach the callback function as an event listener.
-    worker.addEventListener('message', onMessageReceived)
+    worker.port.addEventListener('message', onMessageReceived)
+    worker.port.start()
 
     // Define a cleanup function for when the component is unmounted.
     return () => {
-      worker.removeEventListener('message', onMessageReceived)
+      worker.port.removeEventListener('message', onMessageReceived)
     }
   }, [worker])
 
@@ -143,7 +158,7 @@ function Captions() {
           audio = audio.slice(-MAX_SAMPLES)
         }
 
-        worker.postMessage({
+        worker.port.postMessage({
           type: 'generate',
           data: { audio, language }
         })
