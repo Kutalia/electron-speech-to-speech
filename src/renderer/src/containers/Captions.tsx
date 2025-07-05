@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { Progress } from '@renderer/components/Progress'
-// import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
 import { BROADCAST_CHANNEL_NAME, MAX_SAMPLES, SAMPLING_RATE } from '@renderer/utils/constants'
 
 interface IProgress {
@@ -29,35 +28,17 @@ function Captions() {
   // Inputs and outputs
   const [text, setText] = useState('')
   const [tps, setTps] = useState<number | null>(null)
-  const [
-    language
-    //  setLanguage
-  ] = useState('en')
 
   // Processing
   const [recording, setRecording] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [chunks, setChunks] = useState<BlobPart[]>([])
-  // const [
-  //   stream,
-  //   setStream
-  // ] = useState(null)
   const audioContextRef = useRef<AudioContext>(null)
 
   const broadcastChannel = useMemo(() => new BroadcastChannel(BROADCAST_CHANNEL_NAME), [])
 
   useEffect(() => {
-    broadcastChannel.postMessage({
-      status: 'captions_ready'
-    })
-
-    return () => {
-      broadcastChannel?.close()
-    }
-  }, [broadcastChannel])
-
-  useEffect(() => {
-    if (!status) {
+    if (status === 'configured') {
       worker.port.postMessage({ type: 'load' })
       setStatus('loading')
     }
@@ -66,8 +47,18 @@ function Captions() {
   // We use the `useEffect` hook to setup the worker as soon as the `App` component is mounted.
   useEffect(() => {
     // Create a callback function for messages from the worker thread.
-    const onMessageReceived = (e) => {
+    const onMessageReceived = (e: MessageEvent) => {
       switch (e.data.status) {
+        case 'configured': {
+          // Worker is initially configured from another context (model size set) and is ready to load
+          setStatus((prevState) => prevState || 'configured')
+          if (recorderRef.current?.state === 'recording') {
+            recorderRef.current.stop()
+            setText('')
+            recorderRef.current.start(100)
+          }
+          break
+        }
         case 'loading':
           // Model file start load: add a new progress item to the list.
           setStatus('loading')
@@ -131,11 +122,16 @@ function Captions() {
     worker.port.addEventListener('message', onMessageReceived)
     worker.port.start()
 
+    // This window shouldn't miss the worker's initial status messages, that's why we announce it as ready only after the listener is set
+    broadcastChannel.postMessage({
+      status: 'captions_ready'
+    })
+
     // Define a cleanup function for when the component is unmounted.
     return () => {
       worker.port.removeEventListener('message', onMessageReceived)
     }
-  }, [worker])
+  }, [worker, broadcastChannel])
 
   useEffect(() => {
     if (!recorderRef.current) return
@@ -160,14 +156,14 @@ function Captions() {
 
         worker.port.postMessage({
           type: 'generate',
-          data: { audio, language }
+          data: { audio }
         })
       }
       fileReader.readAsArrayBuffer(blob)
     } else {
       recorderRef.current?.requestData()
     }
-  }, [status, recording, isProcessing, chunks, language, worker])
+  }, [status, recording, isProcessing, chunks, worker])
 
   useLayoutEffect(() => {
     // Make page transparent
@@ -203,8 +199,6 @@ function Captions() {
         track.stop()
         stream.removeTrack(track)
       })
-
-      // setStream(stream)
 
       recorderRef.current = new MediaRecorder(stream)
       audioContextRef.current = new AudioContext({
@@ -258,27 +252,6 @@ function Captions() {
               </div>
             )}
           </div>
-          {/* {status === 'ready' && (
-            <div className="relative w-full flex justify-center">
-              <WhisperLanguageSelector
-                language={language}
-                setLanguage={(e) => {
-                  recorderRef.current?.stop()
-                  setLanguage(e)
-                  recorderRef.current?.start()
-                }}
-              />
-              <button
-                className="border rounded-lg px-2 absolute right-2"
-                onClick={() => {
-                  recorderRef.current?.stop()
-                  recorderRef.current?.start()
-                }}
-              >
-                Reset
-              </button>
-            </div>
-          )} */}
           {status === 'loading' && (
             <div className="w-full max-w-[500px] text-left mx-auto p-4">
               <p className="text-center">{loadingMessage}</p>

@@ -22,13 +22,13 @@ import { getLanguages, getTranslationModels } from '../utils/helpers'
 import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
 
 interface CaptionsConfig {
-  model: WhisperModelSizes
+  modelSize: WhisperModelSizes
   task: 'translate' | 'transcribe'
   language?: string | null
 }
 
 const defaultCaptionsConfig: CaptionsConfig = {
-  model: WhisperModelSizeOptions.SMALL,
+  modelSize: WhisperModelSizeOptions.SMALL,
   task: 'translate',
   language: null
 }
@@ -145,8 +145,8 @@ function SpeechToSpeech(): React.JSX.Element {
   }, [])
 
   const onSttModelChange = useCallback(
-    (model: string) => {
-      execTask({ task: 'change-stt-model', data: model as WhisperModelSizes })
+    (modelSize: string) => {
+      execTask({ task: 'change-stt-model', data: modelSize as WhisperModelSizes })
     },
     [execTask]
   )
@@ -157,10 +157,10 @@ function SpeechToSpeech(): React.JSX.Element {
     setBroadcastChannel(new BroadcastChannel(BROADCAST_CHANNEL_NAME))
   }
 
-  const handleCaptionsModelChange = useCallback((model: string) => {
+  const handleCaptionsModelChange = useCallback((modelSize: string) => {
     setCaptionsConfig((prevState) => ({
       ...prevState,
-      model: model as WhisperModelSizes
+      modelSize: modelSize as WhisperModelSizes
     }))
   }, [])
 
@@ -168,6 +168,13 @@ function SpeechToSpeech(): React.JSX.Element {
     setCaptionsConfig((prevState) => ({
       ...prevState,
       language
+    }))
+  }, [])
+
+  const handleCaptionsTaskChange = useCallback((task: string) => {
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      task: task as 'translate' | 'transcribe'
     }))
   }, [])
 
@@ -233,9 +240,10 @@ function SpeechToSpeech(): React.JSX.Element {
       <div>
         <Select
           options={Object.values(WhisperModelSizeOptions)}
-          label="OpenAI Whisper Model Size for Captioning"
+          label={`OpenAI Whisper Model Size for Captioning${isCaptionsReady ? ' (restart app to change before opening captions)' : ''}`}
           onChange={handleCaptionsModelChange}
-          defaultValue={captionsConfig.model}
+          defaultValue={captionsConfig.modelSize}
+          disabled={isCaptionsReady}
         />
         <div className="bg-white">
           <WhisperLanguageSelector
@@ -244,12 +252,7 @@ function SpeechToSpeech(): React.JSX.Element {
           />
         </div>
         <Select
-          onChange={(task) =>
-            setCaptionsConfig((prevState) => ({
-              ...prevState,
-              task: task as 'translate' | 'transcribe'
-            }))
-          }
+          onChange={handleCaptionsTaskChange}
           options={['translate', 'transcribe']}
           defaultValue="translate"
           label="Caption Task"

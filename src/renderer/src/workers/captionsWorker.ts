@@ -1,26 +1,23 @@
 import {
-  AutoTokenizer,
   AutoProcessor,
-  WhisperForConditionalGeneration,
-  TextStreamer,
+  AutoTokenizer,
   full,
+  PreTrainedModel,
   PreTrainedTokenizer,
-  ProgressCallback,
   Processor,
-  PreTrainedModel
+  ProgressCallback,
+  TextStreamer,
+  WhisperForConditionalGeneration
 } from '@huggingface/transformers'
+import {
+  DEFAULT_STT_MODEL_OPTION,
+  STT_MODEL_OPTIONS,
+  WhisperModelSizeOptions
+} from '@renderer/utils/constants'
 
 const MAX_NEW_TOKENS = 64
 
 const ports: MessagePort[] = []
-
-const defaultTask: 'translate' | 'transcribe' = 'translate'
-const defaultLanguage: string | null = null // Auto-detection
-
-let config = {
-  task: defaultTask,
-  language: defaultLanguage
-}
 
 const postMessageToAllPorts = (...params: Parameters<MessagePort['postMessage']>) => {
   ports.forEach((port) => {
@@ -32,29 +29,57 @@ const postMessageToAllPorts = (...params: Parameters<MessagePort['postMessage']>
  * This class uses the Singleton pattern to ensure that only one instance of the model is loaded.
  */
 class AutomaticSpeechRecognitionPipeline {
-  static model_id = 'onnx-community/whisper-small'
+  // Probably I'd better dispose the worker (model first) altogether and open it again
+  static model_size = DEFAULT_STT_MODEL_OPTION
+  static language: string | null = null
+  static task: 'translate' | 'transcribe' = 'translate'
   static tokenizer: Promise<PreTrainedTokenizer> | null = null
   static processor: Promise<Processor> | null = null
   static model: Promise<PreTrainedModel> | null = null
 
   static async getInstance(progress_callback?: ProgressCallback) {
-    this.tokenizer ??= AutoTokenizer.from_pretrained(this.model_id, {
+    const model_id = STT_MODEL_OPTIONS[this.model_size].id
+
+    this.tokenizer ??= AutoTokenizer.from_pretrained(model_id, {
       progress_callback
     })
-    this.processor ??= AutoProcessor.from_pretrained(this.model_id, {
+    this.processor ??= AutoProcessor.from_pretrained(model_id, {
       progress_callback
     })
 
-    this.model ??= WhisperForConditionalGeneration.from_pretrained(this.model_id, {
-      dtype: {
-        encoder_model: 'fp32', // 'fp16' works too
-        decoder_model_merged: 'q4' // or 'fp32' ('fp16' is broken)
-      },
-      device: 'webgpu',
+    this.model ??= WhisperForConditionalGeneration.from_pretrained(model_id, {
+      ...STT_MODEL_OPTIONS[this.model_size].options,
       progress_callback
     })
 
     return Promise.all([this.tokenizer, this.processor, this.model])
+  }
+
+  static configure(
+    config: Partial<{
+      task: (typeof AutomaticSpeechRecognitionPipeline)['task']
+      language: (typeof AutomaticSpeechRecognitionPipeline)['language']
+      modelSize: WhisperModelSizeOptions
+    }>
+  ) {
+    if (Object.prototype.hasOwnProperty.call(config, 'language')) {
+      AutomaticSpeechRecognitionPipeline.language = config.language as Exclude<
+        typeof config.language,
+        undefined
+      >
+    }
+    if (Object.prototype.hasOwnProperty.call(config, 'task')) {
+      AutomaticSpeechRecognitionPipeline.task = config.task as Exclude<
+        typeof config.task,
+        undefined
+      >
+    }
+    if (Object.prototype.hasOwnProperty.call(config, 'modelSize')) {
+      AutomaticSpeechRecognitionPipeline.model_size = config.modelSize as Exclude<
+        typeof config.modelSize,
+        undefined
+      >
+    }
   }
 }
 
@@ -100,9 +125,9 @@ async function generate({ audio }) {
   const outputs = await model.generate({
     ...inputs,
     max_new_tokens: MAX_NEW_TOKENS,
-    language: config.language,
+    language: AutomaticSpeechRecognitionPipeline.language,
     streamer,
-    task: config.task
+    task: AutomaticSpeechRecognitionPipeline.task
   })
 
   const decoded = tokenizer.batch_decode(outputs as number[][], {
@@ -162,9 +187,11 @@ onconnect = function (event: MessageEvent) {
         generate(data)
         break
 
-      case 'config':
-        config = data
+      case 'config': {
+        AutomaticSpeechRecognitionPipeline.configure(data)
+        postMessageToAllPorts({ status: 'configured' })
         break
+      }
 
       default:
         break

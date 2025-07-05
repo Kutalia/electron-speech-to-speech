@@ -48,7 +48,7 @@ const setTranscriptionPipeline = async (modelOption: WhisperModelSizes = savedMo
 
   transcribe = await pipeline<'automatic-speech-recognition'>(
     'automatic-speech-recognition',
-    STT_MODEL_OPTIONS[modelOption].model,
+    STT_MODEL_OPTIONS[modelOption].id,
     STT_MODEL_OPTIONS[modelOption].options
   )
 
