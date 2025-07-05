@@ -12,6 +12,7 @@ interface Props {
   defaultValue: string
   options: Options
   disabledOptions?: string[]
+  disabled?: boolean
 }
 
 export const Select: React.FC<Props> = ({
@@ -19,7 +20,8 @@ export const Select: React.FC<Props> = ({
   onChange,
   defaultValue,
   options: _options,
-  disabledOptions = []
+  disabledOptions = [],
+  disabled
 }) => {
   const options = useMemo(
     () =>
@@ -34,6 +36,7 @@ export const Select: React.FC<Props> = ({
         defaultValue={defaultValue}
         className="select"
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
       >
         {options.map(({ value, label }) => (
           <option disabled={disabledOptions?.includes(value)} key={value} value={value}>
