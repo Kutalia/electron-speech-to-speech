@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 interface Props {
   kind: MediaDeviceKind
   onChange: (deviceId: MediaDeviceInfo['deviceId']) => void
+  disabled?: boolean
 }
 
-export const DeviceSelect: React.FC<Props> = ({ kind, onChange }) => {
+export const DeviceSelect: React.FC<Props> = ({ kind, onChange, disabled }) => {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>()
 
   useEffect(() => {
@@ -16,7 +17,12 @@ export const DeviceSelect: React.FC<Props> = ({ kind, onChange }) => {
 
   return (
     devices && (
-      <select defaultValue="default" onChange={(e) => onChange(e.target.value)} className="select">
+      <select
+        defaultValue="default"
+        onChange={(e) => onChange(e.target.value)}
+        className="select"
+        disabled={disabled}
+      >
         {devices
           .filter((d) => d.kind === kind)
           .map(({ label, deviceId }) => (

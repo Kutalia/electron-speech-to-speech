@@ -1,9 +1,4 @@
-import {
-  DEFAULT_SRC_LANG,
-  DEFAULT_STT_MODEL_OPTION,
-  DEFAULT_TGT_LANG,
-  WhisperModelSizes
-} from '@renderer/utils/constants'
+import { DEFAULT_SRC_LANG, DEFAULT_TGT_LANG, WhisperModelSizes } from '@renderer/utils/constants'
 import { AtLeastOne } from '@renderer/utils/types'
 import { ExecTaskResult } from '@renderer/workers/speechToSpeechWorker'
 import { useCallback, useEffect, useState } from 'react'
@@ -32,25 +27,29 @@ type ExecTaskParams =
 
 type ExecTaskResultEvent = MessageEvent<ExecTaskResult>
 
-export const useWorker = () => {
-  const [worker] = useState(
-    () =>
-      new Worker(new URL('../workers/speechToSpeechWorker.ts', import.meta.url), { type: 'module' })
-  )
+interface Params {
+  defaultValues: {
+    sttModel: WhisperModelSizes
+  }
+}
+
+export const useWorker = (params: Params) => {
+  const [worker, setWorker] = useState<Worker>()
+  const [isWorkerListening, setIsWorkerListening] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [languages, setLanguages] = useState({
     src_lang: DEFAULT_SRC_LANG,
     tgt_lang: DEFAULT_TGT_LANG
   })
-  const [sttModel, setSttModel] = useState(DEFAULT_STT_MODEL_OPTION)
 
   const execTask = useCallback(
     (params: ExecTaskParams) => {
-      if (!isReady) {
+      if (isLoading || !isWorkerListening || !worker) {
         return
       }
 
-      setIsReady(false)
+      setIsLoading(true)
 
       worker.postMessage(params)
 
@@ -60,7 +59,7 @@ export const useWorker = () => {
 
           if (message.task === params.task && message.status === 'complete') {
             resolve(message.data)
-            setIsReady(true)
+            setIsLoading(false)
             worker.removeEventListener('message', listener)
           }
         }
@@ -68,16 +67,17 @@ export const useWorker = () => {
         worker.addEventListener('message', listener)
       })
     },
-    [isReady, worker]
+    [isLoading, isWorkerListening, worker]
   )
 
   useEffect(() => {
-    worker.addEventListener('message', (event) => {
+    worker?.addEventListener('message', (event) => {
       const message = event.data
 
       switch (message.status) {
-        case 'ready': {
-          setIsReady(true)
+        case 'listening': {
+          setIsLoading(false)
+          setIsWorkerListening(true)
           break
         }
         case 'languages-changed': {
@@ -85,7 +85,7 @@ export const useWorker = () => {
           break
         }
         case 'stt-model-changed': {
-          setSttModel(message.data)
+          setIsReady(true)
           break
         }
         default:
@@ -94,10 +94,24 @@ export const useWorker = () => {
     })
   }, [worker])
 
+  useEffect(() => {
+    if (isWorkerListening && !isReady && !isLoading) {
+      execTask({ task: 'change-stt-model', data: params.defaultValues.sttModel })
+    }
+  }, [execTask, isLoading, isReady, isWorkerListening, params.defaultValues.sttModel])
+
+  const initWorker = useCallback(() => {
+    setIsLoading(true)
+    setWorker(
+      new Worker(new URL('../workers/speechToSpeechWorker.ts', import.meta.url), { type: 'module' })
+    )
+  }, [])
+
   return {
+    initWorker,
     isReady,
+    isLoading,
     execTask,
-    languages,
-    sttModel
+    languages
   }
 }

@@ -14,6 +14,7 @@ import {
   BROADCAST_CHANNEL_NAME,
   DEFAULT_PRIMARY_HOTKEY,
   DEFAULT_SECONDARY_HOTKEY,
+  DEFAULT_STT_MODEL_OPTION,
   SAMPLING_RATE,
   WhisperModelSizeOptions,
   WhisperModelSizes
@@ -37,7 +38,18 @@ function SpeechToSpeech(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
-  const { isReady, execTask, languages: savedLanguages, sttModel } = useWorker()
+  const [sttModel, setSttModel] = useState<WhisperModelSizes>(DEFAULT_STT_MODEL_OPTION)
+  const {
+    initWorker,
+    isReady,
+    isLoading,
+    execTask,
+    languages: savedLanguages
+  } = useWorker({
+    defaultValues: {
+      sttModel
+    }
+  })
   const [isRecording, setIsRecording] = useState(false)
   const [primaryHotkey, setPrimaryHotkey] = useState(DEFAULT_PRIMARY_HOTKEY)
   const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(
@@ -136,6 +148,10 @@ function SpeechToSpeech(): React.JSX.Element {
     })
   }, [primaryHotkey, secondaryHotkey])
 
+  const onLoadSttModels = () => {
+    initWorker()
+  }
+
   const onPrimaryHotkeyChange = useCallback((h: string) => {
     setPrimaryHotkey(h as typeof primaryHotkey)
   }, [])
@@ -146,6 +162,7 @@ function SpeechToSpeech(): React.JSX.Element {
 
   const onSttModelChange = useCallback(
     (modelSize: string) => {
+      setSttModel(modelSize as WhisperModelSizes)
       execTask({ task: 'change-stt-model', data: modelSize as WhisperModelSizes })
     },
     [execTask]
@@ -179,16 +196,24 @@ function SpeechToSpeech(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between py-8 bg-[#1b1b1f]">
+    <div className="min-h-screen flex flex-col gap-8 items-center justify-between py-8 bg-[#1b1b1f]">
       <div className="flex flex-col items-center gap-8">
-        <DeviceSelect kind="audioinput" onChange={setInputDevice} />
-        <DeviceSelect kind="audiooutput" onChange={setOutputDevice} />
+        <button
+          disabled={isReady || isLoading}
+          className="btn btn-secondary"
+          onClick={onLoadSttModels}
+        >
+          Load Speech-to-Speech Models
+        </button>
+        <DeviceSelect kind="audioinput" onChange={setInputDevice} disabled={!isReady} />
+        <DeviceSelect kind="audiooutput" onChange={setOutputDevice} disabled={!isReady} />
         <div className="flex gap-4 justify-stretch w-80">
           <Select
             options={allLanguages.input}
             label="Input language"
             onChange={onSrcLangChange}
             defaultValue={savedLanguages.src_lang}
+            disabled={!isReady}
           />
           <Select
             options={allLanguages.output}
@@ -201,6 +226,7 @@ function SpeechToSpeech(): React.JSX.Element {
             label="Output language"
             onChange={onTgtLangChange}
             defaultValue={savedLanguages.tgt_lang}
+            disabled={!isReady}
           />
         </div>
         <div className="flex gap-4 justify-stretch w-80">
@@ -227,17 +253,20 @@ function SpeechToSpeech(): React.JSX.Element {
           />
         </div>
       </div>
-      {!isReady && <div className="loading loading-bars loading-xl text-accent" />}
-      <div style={{ display: isReady ? 'block' : 'none' }}>
-        <AudioRecorder
-          inputDeviceId={inputDevice}
-          outputDeviceId={outputDevice}
-          onRecordingComplete={onRecordingComplete}
-          ttsResult={ttsResult}
-          hotkeyPressed={isRecording}
-        />
-      </div>
-      <div>
+      {isLoading && <div className="loading loading-bars loading-xl text-accent" />}
+      {isReady && (
+        <div style={{ display: !isLoading ? 'block' : 'none' }}>
+          <AudioRecorder
+            inputDeviceId={inputDevice}
+            outputDeviceId={outputDevice}
+            onRecordingComplete={onRecordingComplete}
+            ttsResult={ttsResult}
+            hotkeyPressed={isRecording}
+          />
+        </div>
+      )}
+      <div className="text-center w-80">
+        <h2 className="text-white">Live Captions</h2>
         <Select
           options={Object.values(WhisperModelSizeOptions)}
           label={`OpenAI Whisper Model Size for Captioning${isCaptionsReady ? ' (restart app to change before opening captions)' : ''}`}
@@ -245,19 +274,17 @@ function SpeechToSpeech(): React.JSX.Element {
           defaultValue={captionsConfig.modelSize}
           disabled={isCaptionsReady}
         />
-        <div className="bg-white">
-          <WhisperLanguageSelector
-            language={captionsConfig.language}
-            setLanguage={handleCaptionsLanguageChange}
-          />
-        </div>
+        <WhisperLanguageSelector
+          language={captionsConfig.language}
+          setLanguage={handleCaptionsLanguageChange}
+        />
         <Select
           onChange={handleCaptionsTaskChange}
           options={['translate', 'transcribe']}
           defaultValue="translate"
           label="Caption Task"
         />
-        <button className="btn" onClick={onClickOpenCaptions}>
+        <button className="btn btn-info mt-4" onClick={onClickOpenCaptions}>
           Open Captions
         </button>
       </div>

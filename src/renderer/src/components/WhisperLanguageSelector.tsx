@@ -1,4 +1,6 @@
 import whisperLanguages from '@renderer/utils/whisper-languages.json'
+import { useCallback, useMemo } from 'react'
+import { Select } from './Select'
 
 function titleCase(str: string) {
   str = str.toLowerCase()
@@ -10,24 +12,25 @@ function titleCase(str: string) {
 }
 
 export function WhisperLanguageSelector({ language, setLanguage }) {
-  const handleLanguageChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
-    setLanguage(event.target.value || null)
-  }
+  const handleLanguageChange = useCallback(
+    (value: string) => {
+      setLanguage(value || null)
+    },
+    [setLanguage]
+  )
 
-  const names = Object.values(whisperLanguages).map(titleCase)
+  const options = useMemo(() => {
+    const names = Object.values(whisperLanguages).map(titleCase)
+
+    return Object.keys(whisperLanguages).map((key, i) => ({ value: key, label: names[i] }))
+  }, [])
 
   return (
-    <select
-      className="border rounded-lg p-2 max-w-[100px]"
-      value={language || undefined}
+    <Select
+      label="Select Captioned Language"
+      defaultValue={language}
       onChange={handleLanguageChange}
-    >
-      <option value={''}>Auto-detect</option>
-      {Object.keys(whisperLanguages).map((key, i) => (
-        <option key={key} value={key}>
-          {names[i]}
-        </option>
-      ))}
-    </select>
+      options={options}
+    />
   )
 }

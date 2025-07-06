@@ -58,8 +58,6 @@ const setTranscriptionPipeline = async (modelOption: WhisperModelSizes = savedMo
   })
 }
 
-await setTranscriptionPipeline()
-
 type ChangeTranslationLanguagesParams = Partial<{ src_lang: string; tgt_lang: string }>
 
 let translate: TranslationPipeline
@@ -96,10 +94,6 @@ const setTranslationPipeline = async ({
 }
 
 await setTranslationPipeline({})
-
-self.postMessage({
-  status: 'ready'
-})
 
 self.addEventListener('message', async (event) => {
   const message = event.data
@@ -149,4 +143,8 @@ self.addEventListener('message', async (event) => {
     task: message.task,
     data: result
   } as ExecTaskResult)
+})
+
+self.postMessage({
+  status: 'listening'
 })
