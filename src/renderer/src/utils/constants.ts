@@ -7,6 +7,7 @@ export enum WhisperModelSizeOptions {
   TINY = 'tiny',
   BASE = 'base',
   SMALL = 'small',
+  SMALL_FR = 'small_fr',
   MEDIUM = 'medium',
   LARGE = 'large'
 }
@@ -37,6 +38,14 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   small: {
     id: 'onnx-community/whisper-small',
+    options: {
+      device: 'webgpu',
+      dtype: 'fp32'
+    }
+  },
+  // TODO: add more specialized Whisper models that are tested to work
+  small_fr: {
+    id: 'onnx-community/whisper-small-cv11-french-ONNX',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
