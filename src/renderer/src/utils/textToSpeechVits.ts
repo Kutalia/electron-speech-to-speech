@@ -1,6 +1,7 @@
 import * as tts from '@diffusionstudio/vits-web'
 import { getLangNameByCode, getVoiceIdByLangCode, getVoices } from './helpers'
 import { WavDecoder } from './wavDecoder'
+import { VERIFIED_VOICES } from './constants'
 
 export const synthesizeWithVits = async (text: string, langCode: string) => {
   let tryCount = 0
@@ -13,7 +14,8 @@ export const synthesizeWithVits = async (text: string, langCode: string) => {
     try {
       wav = await tts.predict({
         text,
-        voiceId: getVoiceIdByLangCode(langCode, tryCount) as tts.VoiceId
+        voiceId:
+          VERIFIED_VOICES[langCode] ?? (getVoiceIdByLangCode(langCode, tryCount) as tts.VoiceId)
       })
 
       break
