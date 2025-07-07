@@ -21,16 +21,12 @@ import {
 } from '../utils/constants'
 import { getLanguages, getTranslationModels } from '../utils/helpers'
 import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
-
-interface CaptionsConfig {
-  modelSize: WhisperModelSizes
-  task: 'translate' | 'transcribe'
-  language?: string | null
-}
+import { CaptionsConfig } from '@renderer/utils/types'
 
 const defaultCaptionsConfig: CaptionsConfig = {
   modelSize: WhisperModelSizeOptions.SMALL,
   task: 'translate',
+  usingGPU: true,
   language: null
 }
 
@@ -56,7 +52,8 @@ function SpeechToSpeech(): React.JSX.Element {
     DEFAULT_SECONDARY_HOTKEY
   )
   const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel>()
-  const [isCaptionsReady, setIsCaptionsReady] = useState(false) // If captions window is ready to receive config
+  const [isCaptionsWorkerReady, setIsCaptionsWorkerReady] = useState(false) // If captions worker set in captions window context is ready
+  const [isCaptionsWindowReady, setIsCaptionsWindowReady] = useState(false)
   const [captionsConfig, setCaptionsConfig] = useState<CaptionsConfig>(defaultCaptionsConfig)
   const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
 
@@ -113,31 +110,56 @@ function SpeechToSpeech(): React.JSX.Element {
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   useEffect(() => {
-    broadcastChannel?.addEventListener('message', (e) => {
-      if (e.data.status === 'captions_ready') {
-        setIsCaptionsReady(true)
-        // Making sure the shared worker is initiated from captions window to save memory before the latter is opened
-        setCaptionsWorker(
-          new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
-            type: 'module'
-          })
-        )
+    const bcListener = (e: MessageEvent) => {
+      switch (e.data.status) {
+        case 'captions_window_ready': {
+          setIsCaptionsWindowReady(true)
+          break
+        }
+        case 'captions_worker_ready': {
+          setIsCaptionsWorkerReady(true)
+
+          if (e.data.data.usingGPU) {
+            // Making sure the shared worker is initiated from captions window to save memory before the latter is opened
+            setCaptionsWorker(
+              (prevState) =>
+                prevState ||
+                new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
+                  type: 'module'
+                })
+            )
+          }
+
+          break
+        }
       }
-    })
+    }
+
+    broadcastChannel?.addEventListener('message', bcListener)
 
     return () => {
+      broadcastChannel?.removeEventListener('message', bcListener)
       broadcastChannel?.close()
     }
   }, [broadcastChannel])
 
   useEffect(() => {
-    if (isCaptionsReady && captionsWorker) {
+    if (isCaptionsWorkerReady && captionsWorker) {
       captionsWorker.port.postMessage({
         type: 'config',
         data: captionsConfig
       })
     }
-  }, [isCaptionsReady, captionsConfig, captionsWorker])
+  }, [isCaptionsWorkerReady, captionsConfig, captionsWorker])
+
+  useEffect(() => {
+    if (isCaptionsWindowReady && broadcastChannel) {
+      broadcastChannel.postMessage({
+        status: 'config',
+        data: captionsConfig
+      })
+    }
+  }, [isCaptionsWindowReady, captionsConfig, broadcastChannel])
 
   useEffect(() => {
     // @ts-ignore missed preload type declaration
@@ -194,6 +216,16 @@ function SpeechToSpeech(): React.JSX.Element {
       task: task as 'translate' | 'transcribe'
     }))
   }, [])
+
+  const handleCaptionsUsingGPUChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
+    (event) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        usingGPU: !!event.target.checked
+      }))
+    },
+    []
+  )
 
   return (
     <div className="min-h-screen flex flex-col gap-8 items-center justify-between py-8 bg-[#1b1b1f]">
@@ -265,14 +297,29 @@ function SpeechToSpeech(): React.JSX.Element {
           />
         </div>
       )}
-      <div className="text-center w-80">
-        <h2 className="text-white">Live Captions</h2>
+      <fieldset className="fieldset border-base-300 rounded-box text-center w-80 border p-4">
+        <legend className="fieldset-legend text-white">
+          Live Captions&nbsp;
+          {isCaptionsWorkerReady && "(some settings can't be changed before restarting the app)"}
+        </legend>
+
+        <label className="label text-white">
+          <input
+            type="checkbox"
+            checked={captionsConfig.usingGPU}
+            className="checkbox checkbox-info"
+            onChange={handleCaptionsUsingGPUChange}
+            disabled={isCaptionsWorkerReady}
+          />
+          Use WebGPU acceleration (disable while gaming)
+        </label>
+
         <Select
           options={Object.values(WhisperModelSizeOptions)}
-          label={`OpenAI Whisper Model Size for Captioning${isCaptionsReady ? ' (restart app to change before opening captions)' : ''}`}
+          label={`OpenAI Whisper Model Size for Captioning${!captionsConfig.usingGPU ? " (can't change for CPU mode)" : ''}`}
           onChange={handleCaptionsModelChange}
           defaultValue={captionsConfig.modelSize}
-          disabled={isCaptionsReady}
+          disabled={isCaptionsWorkerReady || !captionsConfig.usingGPU}
         />
         <WhisperLanguageSelector
           language={captionsConfig.language}
@@ -287,7 +334,7 @@ function SpeechToSpeech(): React.JSX.Element {
         <button className="btn btn-info mt-4" onClick={onClickOpenCaptions}>
           Open Captions
         </button>
-      </div>
+      </fieldset>
       <div className="bg-white p-2 rounded-md">
         <Footer />
       </div>

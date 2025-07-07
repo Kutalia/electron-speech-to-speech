@@ -2,6 +2,14 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { Progress } from '@renderer/components/Progress'
 import { BROADCAST_CHANNEL_NAME, MAX_SAMPLES, SAMPLING_RATE } from '@renderer/utils/constants'
+import { CaptionsConfig } from '@renderer/utils/types'
+
+type WorkerHelper = Partial<{
+  worker: Worker | SharedWorker
+  workerPostMessage: Worker['postMessage'] | MessagePort['postMessage']
+  workerAddEventListener: (event: string, listener: (e: MessageEvent) => void) => void
+  workerRemoveEventListener: (event: string, listener: (e: MessageEvent) => void) => void
+}>
 
 interface IProgress {
   text: string
@@ -10,18 +18,62 @@ interface IProgress {
   file: string
 }
 
-function Captions() {
-  const [worker] = useState(
-    () =>
-      new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
-        type: 'module'
-      })
-  )
+type ProgressEventData = { status: 'progress'; file?: string }
+type CompleteEventData = { status: 'complete'; output: string }
+type LoadingEventData = { status: 'loading'; data: string }
+type ConfiguredEventData = { status: 'configured' }
+type ReadyEventData = { status: 'ready' }
+type StartEventData = { status: 'start' }
+type UpdateEventData = { status: 'update'; output: string; tps?: number }
+type ErrorEventData = { status: 'error'; data: string }
 
-  const recorderRef = useRef<MediaRecorder>(null)
+type WorkerMessageData =
+  | ProgressEventData
+  | CompleteEventData
+  | LoadingEventData
+  | ConfiguredEventData
+  | ReadyEventData
+  | StartEventData
+  | UpdateEventData
+  | ErrorEventData
+
+function Captions() {
+  const [config, setConfig] = useState<CaptionsConfig>()
+
+  const { workerPostMessage, workerAddEventListener, workerRemoveEventListener } =
+    useMemo<WorkerHelper>(() => {
+      switch (config?.usingGPU) {
+        case true: {
+          const w = new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
+            type: 'module'
+          })
+          w.port.start()
+          return {
+            worker: w,
+            workerPostMessage: w.port.postMessage.bind(w.port),
+            workerAddEventListener: w.port.addEventListener.bind(w.port),
+            workerRemoveEventListener: w.port.addEventListener.bind(w.port)
+          }
+        }
+        case false: {
+          const w = new Worker(new URL('../workers/captionsCPUWorker.ts', import.meta.url), {
+            type: 'classic'
+          })
+          return {
+            worker: w,
+            workerPostMessage: w.postMessage.bind(w),
+            workerAddEventListener: w.addEventListener.bind(w),
+            workerRemoveEventListener: w.addEventListener.bind(w)
+          }
+        }
+
+        default:
+          return {}
+      }
+    }, [config?.usingGPU])
 
   // Model loading and progress
-  const [status, setStatus] = useState<string>()
+  const [status, setStatus] = useState<'loading' | 'configured' | 'ready'>()
   const [loadingMessage, setLoadingMessage] = useState('')
   const [progressItems, setProgressItems] = useState<IProgress[]>([])
 
@@ -31,6 +83,7 @@ function Captions() {
 
   // Processing
   const [recording, setRecording] = useState(false)
+  const [recorder, setRecorder] = useState<MediaRecorder>()
   const [isProcessing, setIsProcessing] = useState(false)
   const [chunks, setChunks] = useState<BlobPart[]>([])
   const audioContextRef = useRef<AudioContext>(null)
@@ -38,24 +91,51 @@ function Captions() {
   const broadcastChannel = useMemo(() => new BroadcastChannel(BROADCAST_CHANNEL_NAME), [])
 
   useEffect(() => {
-    if (status === 'configured') {
-      worker.port.postMessage({ type: 'load' })
-      setStatus('loading')
+    const onBcMessage = (e: MessageEvent<{ status: string; data?: CaptionsConfig }>) => {
+      if (e.data.status === 'config') {
+        setConfig(e.data.data)
+      }
     }
-  }, [status, worker])
+
+    broadcastChannel.addEventListener('message', onBcMessage)
+
+    broadcastChannel.postMessage({
+      status: 'captions_window_ready'
+    })
+
+    return () => {
+      broadcastChannel.removeEventListener('message', onBcMessage)
+    }
+  }, [broadcastChannel])
+
+  useEffect(() => {
+    if (status === 'configured' && workerPostMessage) {
+      workerPostMessage({ type: 'load' })
+      setStatus('loading')
+    } else if (status === 'ready' && recorder) {
+      recorder.start(100)
+    }
+  }, [status, recorder, workerPostMessage])
+
+  useEffect(() => {
+    // In case of using a Web Worker, configuration happens from this context
+    if (workerPostMessage && config && !config.usingGPU) {
+      workerPostMessage({ type: 'config', data: config })
+    }
+  }, [workerPostMessage, config])
 
   // We use the `useEffect` hook to setup the worker as soon as the `App` component is mounted.
   useEffect(() => {
     // Create a callback function for messages from the worker thread.
-    const onMessageReceived = (e: MessageEvent) => {
+    const onMessageReceived = (e: MessageEvent<WorkerMessageData>) => {
       switch (e.data.status) {
         case 'configured': {
           // Worker is initially configured from another context (model size set) and is ready to load
           setStatus((prevState) => prevState || 'configured')
-          if (recorderRef.current?.state === 'recording') {
-            recorderRef.current.stop()
+          if (recorder?.state === 'recording') {
+            recorder.stop()
             setText('')
-            recorderRef.current.start(100)
+            recorder.start(100)
           }
           break
         }
@@ -65,15 +145,11 @@ function Captions() {
           setLoadingMessage(e.data.data)
           break
 
-        case 'initiate':
-          setProgressItems((prev) => [...prev, e.data])
-          break
-
         case 'progress':
           // Model file progress: update one of the progress items.
           setProgressItems((prev) =>
             prev.map((item) => {
-              if (item.file === e.data.file) {
+              if (item.file === (e.data as ProgressEventData).file) {
                 return { ...item, ...e.data }
               }
               return item
@@ -81,15 +157,9 @@ function Captions() {
           )
           break
 
-        case 'done':
-          // Model file loaded: remove the progress item from the list.
-          setProgressItems((prev) => prev.filter((item) => item.file !== e.data.file))
-          break
-
         case 'ready':
           // Pipeline ready: the worker is ready to accept messages.
           setStatus('ready')
-          recorderRef.current?.start(100)
           break
 
         case 'start':
@@ -98,50 +168,69 @@ function Captions() {
             setIsProcessing(true)
 
             // Request new data from the recorder
-            recorderRef.current?.requestData()
+            recorder?.requestData()
           }
           break
 
         case 'update':
           {
             // Generation update: update the output text.
-            const { tps } = e.data
-            setTps(tps)
+            const { tps, output } = e.data
+            if (typeof tps === 'number') {
+              setTps(tps)
+            }
+            if (typeof output === 'string') {
+              setText(output)
+            }
           }
           break
 
         case 'complete':
-          // Generation complete: re-enable the "Generate" button
           setIsProcessing(false)
-          setText(e.data.output)
+          if (typeof e.data.output === 'string') {
+            setText(e.data.output)
+          }
+          break
+        case 'error':
+          console.error(e.data.data)
           break
       }
     }
 
     // Attach the callback function as an event listener.
-    worker.port.addEventListener('message', onMessageReceived)
-    worker.port.start()
+    if (workerAddEventListener) {
+      workerAddEventListener('message', onMessageReceived)
+    }
 
     // This window shouldn't miss the worker's initial status messages, that's why we announce it as ready only after the listener is set
     broadcastChannel.postMessage({
-      status: 'captions_ready'
+      status: 'captions_worker_ready',
+      data: { usingGPU: config?.usingGPU }
     })
 
     // Define a cleanup function for when the component is unmounted.
     return () => {
-      worker.port.removeEventListener('message', onMessageReceived)
+      if (workerRemoveEventListener) {
+        workerRemoveEventListener('message', onMessageReceived)
+      }
     }
-  }, [worker, broadcastChannel])
+  }, [
+    broadcastChannel,
+    recorder,
+    workerAddEventListener,
+    workerRemoveEventListener,
+    config?.usingGPU
+  ])
 
   useEffect(() => {
-    if (!recorderRef.current) return
+    if (!recorder) return
     if (!recording) return
     if (isProcessing) return
     if (status !== 'ready') return
 
     if (chunks.length > 0) {
       // Generate from data
-      const blob = new Blob(chunks, { type: recorderRef.current.mimeType })
+      const blob = new Blob(chunks, { type: recorder.mimeType })
 
       const fileReader = new FileReader()
 
@@ -154,16 +243,18 @@ function Captions() {
           audio = audio.slice(-MAX_SAMPLES)
         }
 
-        worker.port.postMessage({
-          type: 'generate',
-          data: { audio }
-        })
+        if (workerPostMessage) {
+          workerPostMessage({
+            type: 'generate',
+            data: { audio }
+          })
+        }
       }
       fileReader.readAsArrayBuffer(blob)
     } else {
-      recorderRef.current?.requestData()
+      recorder.requestData()
     }
-  }, [status, recording, isProcessing, chunks, worker])
+  }, [status, recording, isProcessing, chunks, workerPostMessage, recorder])
 
   useLayoutEffect(() => {
     // Make page transparent
@@ -176,7 +267,7 @@ function Captions() {
     document.documentElement.style.background = 'transparent'
 
     const setLoopbackAudioDevice = async () => {
-      if (recorderRef.current) return // Already set
+      if (recorder) return // Already set
 
       // Tell the main process to enable system audio loopback.
       // This will override the default `getDisplayMedia` behavior.
@@ -200,29 +291,31 @@ function Captions() {
         stream.removeTrack(track)
       })
 
-      recorderRef.current = new MediaRecorder(stream)
+      const newRecorder = new MediaRecorder(stream)
       audioContextRef.current = new AudioContext({
         sampleRate: SAMPLING_RATE
       })
 
-      recorderRef.current.onstart = () => {
+      newRecorder.onstart = () => {
         setRecording(true)
         setChunks([])
       }
-      recorderRef.current.ondataavailable = (e) => {
+      newRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           setChunks((prev) => [...prev, e.data])
         } else {
           // Empty chunk received, so we request new data after a short timeout
           setTimeout(() => {
-            recorderRef.current?.requestData()
+            newRecorder.requestData()
           }, 25)
         }
       }
 
-      recorderRef.current.onstop = () => {
+      newRecorder.onstop = () => {
         setRecording(false)
       }
+
+      setRecorder(newRecorder)
 
       // Tell the main process to disable system audio loopback.
       // This will restore full `getDisplayMedia` functionality.
@@ -233,10 +326,9 @@ function Captions() {
     setLoopbackAudioDevice()
 
     return () => {
-      recorderRef.current?.stop()
-      recorderRef.current = null
+      recorder?.stop()
     }
-  }, [])
+  }, [recorder])
 
   return (
     <div className="flex flex-col mx-auto justify-end bg-[rgba(0,0,0,0.7)]">

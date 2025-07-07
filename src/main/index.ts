@@ -95,7 +95,8 @@ function createCaptionsWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
+      sandbox: false,
+      nodeIntegrationInWorker: true,
       backgroundThrottling: false
     },
     transparent: true,

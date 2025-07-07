@@ -104,10 +104,9 @@ async function generate({ audio }) {
       tps = (numTokens / (performance.now() - startTime)) * 1000
     }
   }
-  const callback_function = (output: string) => {
+  const callback_function = () => {
     postMessageToAllPorts({
       status: 'update',
-      output,
       tps,
       numTokens
     })
@@ -137,7 +136,7 @@ async function generate({ audio }) {
   // Send the output back to the main thread
   postMessageToAllPorts({
     status: 'complete',
-    output: decoded
+    output: decoded.join('')
   })
   processing = false
 }
