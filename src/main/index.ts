@@ -15,6 +15,8 @@ import { checkAndApplyUpdates } from './updater'
 // @ts-ignore missing type declaration
 import { initMain as initAudioLoopback } from 'electron-audio-loopback'
 
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+
 initAudioLoopback()
 
 let captionsWindow: BrowserWindow | null = null
@@ -83,7 +85,7 @@ function createMainWindow(): void {
 
 function createCaptionsWindow(): void {
   if (captionsWindow) {
-    captionsWindow.focus()
+    captionsWindow.show()
     return
   }
 
