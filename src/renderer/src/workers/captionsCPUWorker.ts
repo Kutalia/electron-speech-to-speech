@@ -62,8 +62,6 @@ const generate = async ({ audio }: { audio: Float32Array }) => {
     })
   } catch (err) {
     self.postMessage({ status: 'error', data: (err as Error).message })
-  } finally {
-    processing = false
   }
 }
 
