@@ -4,7 +4,8 @@ import {
   pipeline,
   TextToAudioOutput,
   TranslationOutput,
-  TranslationPipeline
+  TranslationPipeline,
+  env
 } from '@huggingface/transformers'
 
 import {
@@ -16,6 +17,10 @@ import {
 } from '../utils/constants'
 import { getLangNameByCode, getTranslationModels } from '../utils/helpers'
 import { synthesizeWithVits } from '../utils/textToSpeechVits'
+
+if (env?.backends?.onnx?.wasm) {
+  env.backends.onnx.wasm.numThreads = 12
+}
 
 export type ExecTaskResultData =
   | TranslationOutput
