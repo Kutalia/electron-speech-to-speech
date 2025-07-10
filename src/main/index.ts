@@ -14,8 +14,35 @@ import { addHotkeyListeners } from './key-listener'
 import { checkAndApplyUpdates } from './updater'
 // @ts-ignore missing type declaration
 import { initMain as initAudioLoopback } from 'electron-audio-loopback'
+import { Worker } from 'node:worker_threads'
+import captionsWorkerPath from './captionsCPUWorker?modulePath'
 
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
+
+// Create captions CPU worker on demand and handle hooking and clearing all listeners
+const hookCaptionsWorker = (win: BrowserWindow) => {
+  const onRequestCreateCaptionsWorker = () => {
+    const captionsWorker = new Worker(captionsWorkerPath)
+
+    const onCaptionsWorkerSendingMessage = (message) => {
+      win.webContents.send('captions-cpu-worker-sending-message', JSON.stringify(message))
+    }
+    captionsWorker.on('message', onCaptionsWorkerSendingMessage)
+
+    const onCaptionsWorkerReceivingMessage = (_, message) => {
+      captionsWorker.postMessage(JSON.parse(message))
+    }
+    ipcMain.on('captions-cpu-worker-receiving-message', onCaptionsWorkerReceivingMessage)
+
+    win.once('close', () => {
+      captionsWorker.terminate()
+      ipcMain.off('captions-cpu-worker-receiving-message', onCaptionsWorkerReceivingMessage)
+    })
+  }
+
+  // Limit requesting worker creation to 1 for each window
+  ipcMain.once('create-captions-cpu-worker', onRequestCreateCaptionsWorker)
+}
 
 initAudioLoopback()
 
@@ -97,8 +124,7 @@ function createCaptionsWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      nodeIntegrationInWorker: true,
+      sandbox: true,
       backgroundThrottling: false
     },
     transparent: true,
@@ -114,6 +140,8 @@ function createCaptionsWindow(): void {
   // Create the browser window.
   const win = new BrowserWindow(windowOptions)
   captionsWindow = win
+
+  hookCaptionsWorker(win)
 
   win.on('close', () => {
     captionsWindow = null

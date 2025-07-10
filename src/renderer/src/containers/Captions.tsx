@@ -49,21 +49,21 @@ function Captions() {
           })
           w.port.start()
           return {
-            worker: w,
             workerPostMessage: w.port.postMessage.bind(w.port),
             workerAddEventListener: w.port.addEventListener.bind(w.port),
             workerRemoveEventListener: w.port.addEventListener.bind(w.port)
           }
         }
         case false: {
-          const w = new Worker(new URL('../workers/captionsCPUWorker.ts', import.meta.url), {
-            type: 'classic'
-          })
+          window.api.createCaptionsCPUWorker()
+
           return {
-            worker: w,
-            workerPostMessage: w.postMessage.bind(w),
-            workerAddEventListener: w.addEventListener.bind(w),
-            workerRemoveEventListener: w.addEventListener.bind(w)
+            workerPostMessage: (message) =>
+              window.api.sendCaptionsCPUWorkerMessage(JSON.stringify(message)),
+            workerAddEventListener: (_, listener) =>
+              window.api.onCaptionsCPUWorkerMessage((message) =>
+                listener({ data: JSON.parse(message) } as MessageEvent)
+              )
           }
         }
 
@@ -271,7 +271,6 @@ function Captions() {
 
       // Tell the main process to enable system audio loopback.
       // This will override the default `getDisplayMedia` behavior.
-      // @ts-ignore missed preload type declaration
       await window.api.enableLoopbackAudio()
 
       // Get a MediaStream with system audio loopback.
@@ -319,7 +318,6 @@ function Captions() {
 
       // Tell the main process to disable system audio loopback.
       // This will restore full `getDisplayMedia` functionality.
-      // @ts-ignore missed preload type declaration
       await window.api.disableLoopbackAudio()
     }
 

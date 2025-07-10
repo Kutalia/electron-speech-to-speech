@@ -1,3 +1,5 @@
+import { Worker } from 'worker_threads'
+
 declare global {
   interface Window {
     api: {
@@ -6,6 +8,9 @@ declare global {
       openCaptions: () => void
       enableLoopbackAudio: () => Promise<void>
       disableLoopbackAudio: () => Promise<void>
+      createCaptionsCPUWorker: () => void
+      onCaptionsCPUWorkerMessage: (callback: Parameters<Worker['on']>[1]) => void
+      sendCaptionsCPUWorkerMessage: (...params: Parameters<Parameters<Worker['on']>[1]>) => void
     }
   }
 }

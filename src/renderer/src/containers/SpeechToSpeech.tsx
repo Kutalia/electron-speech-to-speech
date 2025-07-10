@@ -162,9 +162,7 @@ function SpeechToSpeech(): React.JSX.Element {
   }, [isCaptionsWindowReady, captionsConfig, broadcastChannel])
 
   useEffect(() => {
-    // @ts-ignore missed preload type declaration
     window.api.setHotkeyListeners(primaryHotkey, secondaryHotkey)
-    // @ts-ignore missed preload type declaration
     window.api.onHotkeyEvent((state: string) => {
       setIsRecording(state === 'DOWN')
     })
@@ -191,7 +189,6 @@ function SpeechToSpeech(): React.JSX.Element {
   )
 
   const onClickOpenCaptions = () => {
-    // @ts-ignore missed preload type declaration
     window.api.openCaptions()
     setBroadcastChannel(new BroadcastChannel(BROADCAST_CHANNEL_NAME))
   }
