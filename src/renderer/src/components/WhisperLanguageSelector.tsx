@@ -34,7 +34,7 @@ export function WhisperLanguageSelector({ language, setLanguage }) {
   return (
     <Select
       label="Select Captioned Language"
-      defaultValue={language}
+      value={language}
       onChange={handleLanguageChange}
       options={options}
     />

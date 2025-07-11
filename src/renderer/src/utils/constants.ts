@@ -17,6 +17,7 @@ export type WhisperModelSizes = `${WhisperModelSizeOptions}`
 type STT_MODEL_OPTIONS_TYPE = {
   [k in WhisperModelSizes]: {
     id: string
+    cpuModel: string
     options: PretrainedModelOptions
   }
 }
@@ -24,6 +25,7 @@ type STT_MODEL_OPTIONS_TYPE = {
 export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   tiny: {
     id: 'onnx-community/whisper-tiny-ONNX',
+    cpuModel: 'tiny',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -31,6 +33,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   base: {
     id: 'onnx-community/whisper-base',
+    cpuModel: 'base',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -38,6 +41,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   small: {
     id: 'onnx-community/whisper-small',
+    cpuModel: 'small',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -46,6 +50,8 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   // TODO: add more specialized Whisper models that are tested to work
   small_fr: {
     id: 'onnx-community/whisper-small-cv11-french-ONNX',
+    cpuModel:
+      'https://huggingface.co/Kutalia/ggml-models/resolve/main/whisper-small-cv11-french.bin',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -53,6 +59,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   medium: {
     id: 'onnx-community/whisper-medium-ONNX',
+    cpuModel: 'medium',
     options: {
       // https://github.com/huggingface/transformers.js/issues/989#issuecomment-2439457733
       // https://github.com/huggingface/transformers.js/issues/1317
@@ -65,6 +72,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   large: {
     id: 'onnx-community/whisper-large-v3-turbo',
+    cpuModel: 'large',
     options: {
       device: 'webgpu',
       dtype: {
@@ -76,6 +84,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
 }
 
 export const DEFAULT_STT_MODEL_OPTION: WhisperModelSizes = 'small'
+export const DEFAULT_STT_CPU_MODEL_OPTION: WhisperModelSizes = 'tiny'
 
 export const DEFAULT_SRC_LANG = 'en'
 export const DEFAULT_TGT_LANG = 'fr'

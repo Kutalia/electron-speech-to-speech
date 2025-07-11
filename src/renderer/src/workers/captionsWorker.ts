@@ -74,7 +74,7 @@ class AutomaticSpeechRecognitionPipeline {
         undefined
       >
     }
-    if (Object.prototype.hasOwnProperty.call(config, 'modelSize')) {
+    if (Object.prototype.hasOwnProperty.call(config, 'modelSize') && config['modelSize']) {
       AutomaticSpeechRecognitionPipeline.model_size = config.modelSize as Exclude<
         typeof config.modelSize,
         undefined

@@ -4,6 +4,7 @@ export type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> & U[k
 
 export interface CaptionsConfig {
   modelSize: WhisperModelSizes
+  cpuModel: string
   task: 'translate' | 'transcribe'
   usingGPU: boolean
   language?: string | null

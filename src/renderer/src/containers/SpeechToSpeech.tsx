@@ -3,28 +3,31 @@ import {
   TextToAudioOutput,
   TranslationOutput
 } from '@huggingface/transformers'
+import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
+import { CaptionsConfig } from '@renderer/utils/types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AudioRecorder } from '../components/AudioRecorder'
 import { DeviceSelect } from '../components/DeviceSelect'
-import { Select } from '../components/Select'
 import Footer from '../components/Footer'
+import { Select } from '../components/Select'
 import { useWorker } from '../hooks/useWorker'
 import {
   ALL_HOTKEYS,
   BROADCAST_CHANNEL_NAME,
   DEFAULT_PRIMARY_HOTKEY,
   DEFAULT_SECONDARY_HOTKEY,
+  DEFAULT_STT_CPU_MODEL_OPTION,
   DEFAULT_STT_MODEL_OPTION,
   SAMPLING_RATE,
+  STT_MODEL_OPTIONS,
   WhisperModelSizeOptions,
   WhisperModelSizes
 } from '../utils/constants'
 import { getLanguages, getTranslationModels } from '../utils/helpers'
-import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
-import { CaptionsConfig } from '@renderer/utils/types'
 
 const defaultCaptionsConfig: CaptionsConfig = {
   modelSize: WhisperModelSizeOptions.SMALL,
+  cpuModel: STT_MODEL_OPTIONS[WhisperModelSizeOptions.SMALL].cpuModel,
   task: 'translate',
   usingGPU: true,
   language: null
@@ -196,7 +199,8 @@ function SpeechToSpeech(): React.JSX.Element {
   const handleCaptionsModelChange = useCallback((modelSize: string) => {
     setCaptionsConfig((prevState) => ({
       ...prevState,
-      modelSize: modelSize as WhisperModelSizes
+      modelSize: modelSize as WhisperModelSizes,
+      cpuModel: STT_MODEL_OPTIONS[modelSize].cpuModel
     }))
   }, [])
 
@@ -216,12 +220,18 @@ function SpeechToSpeech(): React.JSX.Element {
 
   const handleCaptionsUsingGPUChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
     (event) => {
+      const usingGPU = !!event.target.checked
+
       setCaptionsConfig((prevState) => ({
         ...prevState,
-        usingGPU: !!event.target.checked
+        usingGPU
       }))
+
+      if (!usingGPU) {
+        handleCaptionsModelChange(DEFAULT_STT_CPU_MODEL_OPTION)
+      }
     },
-    []
+    [handleCaptionsModelChange]
   )
 
   return (
@@ -241,7 +251,7 @@ function SpeechToSpeech(): React.JSX.Element {
             options={allLanguages.input}
             label="Input language"
             onChange={onSrcLangChange}
-            defaultValue={savedLanguages.src_lang}
+            value={savedLanguages.src_lang}
             disabled={!isReady}
           />
           <Select
@@ -254,7 +264,7 @@ function SpeechToSpeech(): React.JSX.Element {
               .map((v) => v.value)}
             label="Output language"
             onChange={onTgtLangChange}
-            defaultValue={savedLanguages.tgt_lang}
+            value={savedLanguages.tgt_lang}
             disabled={!isReady}
           />
         </div>
@@ -263,14 +273,14 @@ function SpeechToSpeech(): React.JSX.Element {
             options={['', ...ALL_HOTKEYS]}
             label="Secondary Hotkey"
             onChange={onSecondaryHotkeyChange}
-            defaultValue={secondaryHotkey}
+            value={secondaryHotkey}
           />
           <div className="text-white self-center">+</div>
           <Select
             options={ALL_HOTKEYS}
             label="Primary Hotkey"
             onChange={onPrimaryHotkeyChange}
-            defaultValue={primaryHotkey}
+            value={primaryHotkey}
           />
         </div>
         <div className="flex gap-4 justify-stretch w-80">
@@ -278,7 +288,7 @@ function SpeechToSpeech(): React.JSX.Element {
             options={Object.values(WhisperModelSizeOptions)}
             label="OpenAI Whisper Model Size"
             onChange={onSttModelChange}
-            defaultValue={sttModel}
+            value={sttModel}
           />
         </div>
       </div>
@@ -308,15 +318,15 @@ function SpeechToSpeech(): React.JSX.Element {
             onChange={handleCaptionsUsingGPUChange}
             disabled={isCaptionsWorkerReady}
           />
-          Use WebGPU acceleration (disable while gaming)
+          Use WebGPU acceleration
         </label>
 
         <Select
           options={Object.values(WhisperModelSizeOptions)}
-          label={`OpenAI Whisper Model Size for Captioning${!captionsConfig.usingGPU ? " (can't change for CPU mode)" : ''}`}
+          label="OpenAI Whisper Model Size for Captioning"
           onChange={handleCaptionsModelChange}
-          defaultValue={captionsConfig.modelSize}
-          disabled={isCaptionsWorkerReady || !captionsConfig.usingGPU}
+          value={captionsConfig.modelSize}
+          disabled={isCaptionsWorkerReady}
         />
         <WhisperLanguageSelector
           language={captionsConfig.language}
@@ -325,7 +335,7 @@ function SpeechToSpeech(): React.JSX.Element {
         <Select
           onChange={handleCaptionsTaskChange}
           options={['translate', 'transcribe']}
-          defaultValue="translate"
+          value="translate"
           label="Caption Task"
         />
         <button className="btn btn-info mt-4" onClick={onClickOpenCaptions}>

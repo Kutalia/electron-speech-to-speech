@@ -1,15 +1,14 @@
 import { Whisper, manager } from 'smart-whisper-electron'
 import { parentPort } from 'node:worker_threads'
 
-const DEFAULT_STT_CPU_MODEL = 'tiny'
-
 const ext = '.bin'
 
 const removeTrailingExt = (str: string) => str.split(ext)[0]
 
 const config = {
   language: '',
-  task: 'translate'
+  task: 'translate',
+  cpuModel: ''
 }
 let whisper: Whisper
 let model: string
@@ -17,6 +16,10 @@ let model: string
 parentPort?.postMessage({ status: 'configured' })
 
 const load = async () => {
+  if (typeof config.cpuModel !== 'string' || !config.cpuModel.length) {
+    return
+  }
+
   if (!whisper && !model) {
     try {
       parentPort?.postMessage({ status: 'loading', data: 'Downloading model...' })
@@ -26,11 +29,11 @@ const load = async () => {
       try {
         // Check if already downloaded
         // Needs filtering if model path is a remote URL
-        localRelativePath = DEFAULT_STT_CPU_MODEL.split('/').reverse()[0]
+        localRelativePath = config.cpuModel.split('/').reverse()[0]
         model = manager.resolve(removeTrailingExt(localRelativePath))
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
-        localRelativePath = await manager.download(DEFAULT_STT_CPU_MODEL)
+        localRelativePath = await manager.download(config.cpuModel)
         model = manager.resolve(removeTrailingExt(localRelativePath))
       }
 
@@ -112,6 +115,9 @@ parentPort?.on('message', (eventData) => {
       }
       if (Object.prototype.hasOwnProperty.call(data, 'task')) {
         config.task = data.task
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'cpuModel') && data.cpuModel) {
+        config.cpuModel = data.cpuModel
       }
       parentPort?.postMessage({ status: 'configured' })
       break

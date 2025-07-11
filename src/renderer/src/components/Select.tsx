@@ -9,7 +9,7 @@ const hasPrimitiveOptions = (options: Options): options is string[] => {
 interface Props {
   label: string
   onChange: (value: string) => void
-  defaultValue: string
+  value?: string | null | undefined
   options: Options
   disabledOptions?: string[]
   disabled?: boolean
@@ -18,7 +18,7 @@ interface Props {
 export const Select: React.FC<Props> = ({
   label,
   onChange,
-  defaultValue,
+  value,
   options: _options,
   disabledOptions = [],
   disabled
@@ -33,7 +33,7 @@ export const Select: React.FC<Props> = ({
     <fieldset className="fieldset block w-full">
       <legend className="fieldset-legend text-white">{label}</legend>
       <select
-        defaultValue={defaultValue}
+        value={value || ''}
         className="select"
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
