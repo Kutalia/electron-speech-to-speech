@@ -30,12 +30,14 @@ const defaultCaptionsConfig: CaptionsConfig = {
   cpuModel: STT_MODEL_OPTIONS[WhisperModelSizeOptions.SMALL].cpuModel,
   task: 'translate',
   usingGPU: true,
-  language: null
+  language: null,
+  inputDeviceId: null
 }
 
 function SpeechToSpeech(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
+  const [captionsDeviceId, setCaptionsDeviceId] = useState<MediaDeviceInfo['deviceId']>('default')
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
   const [sttModel, setSttModel] = useState<WhisperModelSizes>(DEFAULT_STT_MODEL_OPTION)
   const {
@@ -227,12 +229,34 @@ function SpeechToSpeech(): React.JSX.Element {
         usingGPU
       }))
 
+      // Switching to the most optimized CPU model
       if (!usingGPU) {
         handleCaptionsModelChange(DEFAULT_STT_CPU_MODEL_OPTION)
       }
     },
     [handleCaptionsModelChange]
   )
+
+  const handleCaptionsUsingSystemAudio = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
+    (event) => {
+      const usingSystemAudio = !!event.target.checked
+
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        inputDeviceId: usingSystemAudio ? null : captionsDeviceId
+      }))
+    },
+    [captionsDeviceId]
+  )
+
+  const handleCaptionsDeviceIdChange = useCallback((deviceId: string) => {
+    setCaptionsDeviceId(deviceId)
+
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      inputDeviceId: deviceId
+    }))
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col gap-8 items-center justify-between py-8 bg-[#1b1b1f]">
@@ -338,6 +362,25 @@ function SpeechToSpeech(): React.JSX.Element {
           value="translate"
           label="Caption Task"
         />
+
+        <div className="flex flex-col items-start gap-2 mt-3">
+          <label className="label text-white">
+            <input
+              type="checkbox"
+              checked={!captionsConfig.inputDeviceId}
+              className="checkbox checkbox-info"
+              onChange={handleCaptionsUsingSystemAudio}
+            />
+            Use System Audio
+          </label>
+          <legend className="fieldset-legend text-white">Captured Input Audio Device</legend>
+          <DeviceSelect
+            kind="audioinput"
+            onChange={handleCaptionsDeviceIdChange}
+            disabled={!captionsConfig.inputDeviceId}
+          />
+        </div>
+
         <button className="btn btn-info mt-4" onClick={onClickOpenCaptions}>
           Open Captions
         </button>

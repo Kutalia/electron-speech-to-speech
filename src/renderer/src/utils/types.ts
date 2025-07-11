@@ -8,4 +8,5 @@ export interface CaptionsConfig {
   task: 'translate' | 'transcribe'
   usingGPU: boolean
   language?: string | null
+  inputDeviceId?: string | null
 }

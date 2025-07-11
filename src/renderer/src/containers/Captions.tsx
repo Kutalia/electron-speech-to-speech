@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Progress } from '@renderer/components/Progress'
 import { BROADCAST_CHANNEL_NAME, MAX_SAMPLES, SAMPLING_RATE } from '@renderer/utils/constants'
 import { CaptionsConfig } from '@renderer/utils/types'
+import { getMediaStream } from '@renderer/utils/helpers'
 
 type WorkerHelper = Partial<{
   worker: Worker | SharedWorker
@@ -87,6 +88,7 @@ function Captions() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [chunks, setChunks] = useState<BlobPart[]>([])
   const audioContextRef = useRef<AudioContext>(null)
+  const lastRecordedDeviceId = useRef<string | null | undefined>(null)
 
   const broadcastChannel = useMemo(() => new BroadcastChannel(BROADCAST_CHANNEL_NAME), [])
 
@@ -113,18 +115,22 @@ function Captions() {
       workerPostMessage({ type: 'load' })
       setStatus('loading')
     } else if (status === 'ready' && recorder) {
-      recorder.start(100)
+      // It could be that the recorder is in a cleanup lifecycle and its streams are being removed, thus hindering it from starting
+      try {
+        recorder.start(100)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (err) {
+        /* empty */
+      }
     }
   }, [status, recorder, workerPostMessage])
 
   useEffect(() => {
-    // In case of using a Web Worker, configuration happens from this context
     if (workerPostMessage && config && !config.usingGPU) {
       workerPostMessage({ type: 'config', data: config })
     }
   }, [workerPostMessage, config])
 
-  // We use the `useEffect` hook to setup the worker as soon as the `App` component is mounted.
   useEffect(() => {
     // Create a callback function for messages from the worker thread.
     const onMessageReceived = (e: MessageEvent<WorkerMessageData>) => {
@@ -135,7 +141,13 @@ function Captions() {
           if (recorder?.state === 'recording') {
             recorder.stop()
             setText('')
-            recorder.start(100)
+            // It could be that the recorder is in a cleanup lifecycle and its streams are being removed, thus hindering it from starting
+            try {
+              recorder.start(100)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (err) {
+              /* empty */
+            }
           }
           break
         }
@@ -168,7 +180,10 @@ function Captions() {
             setIsProcessing(true)
 
             // Request new data from the recorder
-            recorder?.requestData()
+            if (recorder?.state !== 'inactive') {
+              // If not being deleted from useEffect cleanup
+              recorder?.requestData()
+            }
           }
           break
 
@@ -266,30 +281,7 @@ function Captions() {
     // Overrides background set on root html element by DaisyUI
     document.documentElement.style.background = 'transparent'
 
-    const setLoopbackAudioDevice = async () => {
-      if (recorder) return // Already set
-
-      // Tell the main process to enable system audio loopback.
-      // This will override the default `getDisplayMedia` behavior.
-      await window.api.enableLoopbackAudio()
-
-      // Get a MediaStream with system audio loopback.
-      // `getDisplayMedia` will fail if you don't request `video: true`.
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true
-      })
-
-      // Remove video tracks that we don't need.
-      // Note: You may find bugs if you don't remove video tracks.
-
-      const videoTracks = stream.getVideoTracks()
-
-      videoTracks.forEach((track) => {
-        track.stop()
-        stream.removeTrack(track)
-      })
-
+    const initRecorder = (stream: MediaStream) => {
       const newRecorder = new MediaRecorder(stream)
       audioContextRef.current = new AudioContext({
         sampleRate: SAMPLING_RATE
@@ -298,6 +290,7 @@ function Captions() {
       newRecorder.onstart = () => {
         setRecording(true)
         setChunks([])
+        setText('')
       }
       newRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -305,7 +298,9 @@ function Captions() {
         } else {
           // Empty chunk received, so we request new data after a short timeout
           setTimeout(() => {
-            newRecorder.requestData()
+            if (newRecorder.state !== 'inactive') {
+              newRecorder.requestData()
+            }
           }, 25)
         }
       }
@@ -316,15 +311,65 @@ function Captions() {
 
       setRecorder(newRecorder)
 
-      // Tell the main process to disable system audio loopback.
-      // This will restore full `getDisplayMedia` functionality.
-      await window.api.disableLoopbackAudio()
+      lastRecordedDeviceId.current = config?.inputDeviceId
     }
 
-    setLoopbackAudioDevice()
+    const initInputDevice = async () => {
+      if (
+        recorder &&
+        ((lastRecordedDeviceId.current == null && config?.inputDeviceId == null) ||
+          lastRecordedDeviceId.current === config?.inputDeviceId)
+      ) {
+        return // Already set
+      }
 
+      let stream: MediaStream
+
+      if (config?.inputDeviceId) {
+        stream = await getMediaStream(config.inputDeviceId)
+      } else {
+        // Tell the main process to enable system audio loopback.
+        // This will override the default `getDisplayMedia` behavior.
+        await window.api.enableLoopbackAudio()
+
+        // Get a MediaStream with system audio loopback.
+        // `getDisplayMedia` will fail if you don't request `video: true`.
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        })
+
+        // Remove video tracks that we don't need.
+        // Note: You may find bugs if you don't remove video tracks.
+
+        const videoTracks = stream.getVideoTracks()
+
+        videoTracks.forEach((track) => {
+          track.stop()
+          stream.removeTrack(track)
+        })
+
+        // Tell the main process to disable system audio loopback.
+        // This will restore full `getDisplayMedia` functionality.
+        await window.api.disableLoopbackAudio()
+      }
+
+      return stream
+    }
+
+    initInputDevice().then((stream) => {
+      if (stream) {
+        initRecorder(stream)
+      }
+    })
+  }, [recorder, config?.inputDeviceId])
+
+  useEffect(() => {
     return () => {
-      recorder?.stop()
+      if (recorder) {
+        recorder.stream.getTracks().forEach((track) => track.stop())
+        recorder.stop()
+      }
     }
   }, [recorder])
 
