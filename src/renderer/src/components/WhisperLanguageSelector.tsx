@@ -22,7 +22,13 @@ export function WhisperLanguageSelector({ language, setLanguage }) {
   const options = useMemo(() => {
     const names = Object.values(whisperLanguages).map(titleCase)
 
-    return Object.keys(whisperLanguages).map((key, i) => ({ value: key, label: names[i] }))
+    const opts = Object.keys(whisperLanguages).map((key, i) => ({ value: key, label: names[i] }))
+    opts.unshift({
+      value: '',
+      label: 'Auto'
+    })
+
+    return opts
   }, [])
 
   return (

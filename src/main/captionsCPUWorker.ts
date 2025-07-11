@@ -8,7 +8,7 @@ const ext = '.bin'
 const removeTrailingExt = (str: string) => str.split(ext)[0]
 
 const config = {
-  language: 'auto',
+  language: '',
   task: 'translate'
 }
 let whisper: Whisper
