@@ -104,10 +104,6 @@ export const AudioRecorder: React.FC<Props> = ({
           const audioUrl = URL.createObjectURL(new Blob([wav]))
           setSynthesizedWavUrl(audioUrl)
           synthesizedAudioEl.src = audioUrl
-          // const audioBufferSource = audioContext.createBufferSource()
-          // audioBufferSource.buffer = audioBuffer
-          // audioBufferSource.connect(audioContext.destination)
-          // audioBufferSource.start(0)
 
           synthesizedAudioEl.play()
         }
@@ -135,13 +131,7 @@ export const AudioRecorder: React.FC<Props> = ({
           <source src={URL.createObjectURL(new Blob([recordedBlob]))} type={recordedBlob.type} />
         </audio>
       )}
-      <audio ref={setSynthesizedAudioEl} controls>
-        {/* {synthesizedWavUrl && <source
-        src={synthesizedWavUrl}
-        type={'audio/wav'}
-      />
-      } */}
-      </audio>
+      <audio ref={setSynthesizedAudioEl} controls />
       {isRecording && <progress className="progress progress-secondary w-56"></progress>}
     </div>
   )
