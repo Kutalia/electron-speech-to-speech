@@ -230,6 +230,7 @@ export const ALL_HOTKEYS = [
 ]
 
 export const MAX_AUDIO_LENGTH = 30 // seconds
+export const MIN_AUDIO_LENGTH = 0.5
 export const MAX_SAMPLES = SAMPLING_RATE * MAX_AUDIO_LENGTH
 
 export const BROADCAST_CHANNEL_NAME = 'broadcast_channel'

@@ -25,7 +25,8 @@ export default defineConfig({
         input: [
           resolve(__dirname, 'src/renderer/index.html'),
           resolve(__dirname, 'src/renderer/index.captions.html')
-        ]
+        ],
+        treeshake: false // https://github.com/rollup/rollup/issues/5770#issuecomment-3065717581
       }
     }
   }

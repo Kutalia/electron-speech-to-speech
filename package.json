@@ -27,8 +27,9 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@huggingface/hub": "^2.2.0",
     "@huggingface/transformers": "^3.6.1",
+    "@ricky0123/vad-react": "^0.0.30",
     "audiobuffer-to-wav": "^1.0.0",
-    "electron-audio-loopback": "^1.0.3",
+    "electron-audio-loopback": "^1.0.4",
     "electron-log": "^5.4.1",
     "electron-updater": "^6.6.2",
     "node-global-key-listener": "^0.3.0",
@@ -59,5 +60,11 @@
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
     "vite": "^6.2.6"
+  },
+  "overrides": {
+    "@ricky0123/vad-react": {
+      "react": "^19.1.0",
+      "react-dom": "^19.1.0"
+    }
   }
 }

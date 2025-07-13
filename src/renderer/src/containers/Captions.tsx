@@ -1,9 +1,15 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { Progress } from '@renderer/components/Progress'
-import { BROADCAST_CHANNEL_NAME, MAX_SAMPLES, SAMPLING_RATE } from '@renderer/utils/constants'
-import { CaptionsConfig } from '@renderer/utils/types'
+import { VoiceActivityDetection } from '@renderer/components/VoiceActivityDetection'
+import {
+  BROADCAST_CHANNEL_NAME,
+  MAX_SAMPLES,
+  MIN_AUDIO_LENGTH,
+  SAMPLING_RATE
+} from '@renderer/utils/constants'
 import { getMediaStream } from '@renderer/utils/helpers'
+import { CaptionsConfig } from '@renderer/utils/types'
 
 type WorkerHelper = Partial<{
   worker: Worker | SharedWorker
@@ -83,12 +89,72 @@ function Captions() {
   const [tps, setTps] = useState<number | null>(null)
 
   // Processing
-  const [recording, setRecording] = useState(false)
-  const [recorder, setRecorder] = useState<MediaRecorder>()
   const [isProcessing, setIsProcessing] = useState(false)
-  const [chunks, setChunks] = useState<BlobPart[]>([])
-  const audioContextRef = useRef<AudioContext>(null)
-  const lastRecordedDeviceId = useRef<string | null | undefined>(null)
+  const [stream, setStream] = useState<MediaStream>(new MediaStream())
+  const audioRef = useRef<Float32Array>(null)
+  const highPriorityAudioRef = useRef<Float32Array>(null) // Needs to be queued for transcription even if chunks are being processed
+
+  // Voice Activity Detection
+  const lastTimeTalkStarted = useRef<number>(0)
+  const isTalkingRef = useRef<boolean>(null)
+  const onSpeechRealStart = useCallback(() => {
+    lastTimeTalkStarted.current = Date.now()
+    isTalkingRef.current = true
+    console.log('Started talking')
+  }, [])
+  const generateTranscript = useCallback(
+    (audio: Float32Array, highPriority?: boolean) => {
+      // Discard unusably short audio
+      if (audio.length < SAMPLING_RATE * MIN_AUDIO_LENGTH) {
+        return
+      }
+      if (isProcessing) {
+        if (highPriority) {
+          highPriorityAudioRef.current = audio
+        }
+        return
+      }
+      if (status !== 'ready') return
+      if (!audio.length) return
+
+      console.log('Generating transcript')
+
+      if (audio.length > MAX_SAMPLES) {
+        // Get last MAX_SAMPLES
+        audio = audio.slice(-MAX_SAMPLES)
+      }
+
+      if (workerPostMessage) {
+        workerPostMessage({
+          type: 'generate',
+          data: { audio }
+        })
+      }
+    },
+    [isProcessing, status, workerPostMessage]
+  )
+  const onSpeechEnd = useCallback(
+    (spokenAudio: Float32Array) => {
+      isTalkingRef.current = false
+      console.log('Stopped talking')
+      generateTranscript(spokenAudio, true)
+      audioRef.current = null
+    },
+    [generateTranscript]
+  )
+  const onFrameProcessed = useCallback(
+    (propabilities: { isSpeech: number; notSpeech: number }, audio: Float32Array) => {
+      if (isTalkingRef.current && propabilities.isSpeech > 0.5) {
+        audioRef.current = new Float32Array([
+          ...(audioRef.current ? audioRef.current : []),
+          ...audio
+        ]).slice(-MAX_SAMPLES)
+
+        generateTranscript(audioRef.current)
+      }
+    },
+    [generateTranscript]
+  )
 
   const broadcastChannel = useMemo(() => new BroadcastChannel(BROADCAST_CHANNEL_NAME), [])
 
@@ -114,16 +180,8 @@ function Captions() {
     if (status === 'configured' && workerPostMessage) {
       workerPostMessage({ type: 'load' })
       setStatus('loading')
-    } else if (status === 'ready' && recorder) {
-      // It could be that the recorder is in a cleanup lifecycle and its streams are being removed, thus hindering it from starting
-      try {
-        recorder.start(100)
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (err) {
-        /* empty */
-      }
     }
-  }, [status, recorder, workerPostMessage])
+  }, [status, workerPostMessage])
 
   useEffect(() => {
     if (workerPostMessage && config && !config.usingGPU) {
@@ -132,23 +190,10 @@ function Captions() {
   }, [workerPostMessage, config])
 
   useEffect(() => {
-    // Create a callback function for messages from the worker thread.
     const onMessageReceived = (e: MessageEvent<WorkerMessageData>) => {
       switch (e.data.status) {
         case 'configured': {
-          // Worker is initially configured from another context (model size set) and is ready to load
           setStatus((prevState) => prevState || 'configured')
-          if (recorder?.state === 'recording') {
-            recorder.stop()
-            setText('')
-            // It could be that the recorder is in a cleanup lifecycle and its streams are being removed, thus hindering it from starting
-            try {
-              recorder.start(100)
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (err) {
-              /* empty */
-            }
-          }
           break
         }
         case 'loading':
@@ -178,12 +223,6 @@ function Captions() {
           {
             // Start generation
             setIsProcessing(true)
-
-            // Request new data from the recorder
-            if (recorder?.state !== 'inactive') {
-              // If not being deleted from useEffect cleanup
-              recorder?.requestData()
-            }
           }
           break
 
@@ -201,10 +240,20 @@ function Captions() {
           break
 
         case 'complete':
-          setIsProcessing(false)
           if (typeof e.data.output === 'string') {
             setText(e.data.output)
           }
+
+          if (highPriorityAudioRef.current && workerPostMessage) {
+            workerPostMessage({
+              type: 'generate',
+              data: { audio: highPriorityAudioRef.current }
+            })
+            highPriorityAudioRef.current = null
+          } else {
+            setIsProcessing(false)
+          }
+
           break
         case 'error':
           console.error(e.data.data)
@@ -231,45 +280,11 @@ function Captions() {
     }
   }, [
     broadcastChannel,
-    recorder,
     workerAddEventListener,
     workerRemoveEventListener,
-    config?.usingGPU
+    config?.usingGPU,
+    workerPostMessage
   ])
-
-  useEffect(() => {
-    if (!recorder) return
-    if (!recording) return
-    if (isProcessing) return
-    if (status !== 'ready') return
-
-    if (chunks.length > 0) {
-      // Generate from data
-      const blob = new Blob(chunks, { type: recorder.mimeType })
-
-      const fileReader = new FileReader()
-
-      fileReader.onloadend = async () => {
-        const arrayBuffer = fileReader.result
-        const decoded = await audioContextRef.current?.decodeAudioData(arrayBuffer as ArrayBuffer)
-        let audio = decoded!.getChannelData(0)
-        if (audio.length > MAX_SAMPLES) {
-          // Get last MAX_SAMPLES
-          audio = audio.slice(-MAX_SAMPLES)
-        }
-
-        if (workerPostMessage) {
-          workerPostMessage({
-            type: 'generate',
-            data: { audio }
-          })
-        }
-      }
-      fileReader.readAsArrayBuffer(blob)
-    } else {
-      recorder.requestData()
-    }
-  }, [status, recording, isProcessing, chunks, workerPostMessage, recorder])
 
   useLayoutEffect(() => {
     // Make page transparent
@@ -281,46 +296,10 @@ function Captions() {
     // Overrides background set on root html element by DaisyUI
     document.documentElement.style.background = 'transparent'
 
-    const initRecorder = (stream: MediaStream) => {
-      const newRecorder = new MediaRecorder(stream)
-      audioContextRef.current = new AudioContext({
-        sampleRate: SAMPLING_RATE
-      })
-
-      newRecorder.onstart = () => {
-        setRecording(true)
-        setChunks([])
-        setText('')
-      }
-      newRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          setChunks((prev) => [...prev, e.data])
-        } else {
-          // Empty chunk received, so we request new data after a short timeout
-          setTimeout(() => {
-            if (newRecorder.state !== 'inactive') {
-              newRecorder.requestData()
-            }
-          }, 25)
-        }
-      }
-
-      newRecorder.onstop = () => {
-        setRecording(false)
-      }
-
-      setRecorder(newRecorder)
-
-      lastRecordedDeviceId.current = config?.inputDeviceId
-    }
-
     const initInputDevice = async () => {
-      if (
-        recorder &&
-        ((lastRecordedDeviceId.current == null && config?.inputDeviceId == null) ||
-          lastRecordedDeviceId.current === config?.inputDeviceId)
-      ) {
-        return // Already set
+      // Not yet configured
+      if (config?.inputDeviceId === undefined) {
+        return
       }
 
       let stream: MediaStream
@@ -357,24 +336,35 @@ function Captions() {
       return stream
     }
 
-    initInputDevice().then((stream) => {
-      if (stream) {
-        initRecorder(stream)
+    initInputDevice().then((str) => {
+      if (!str) {
+        return
       }
+
+      setStream(str)
     })
-  }, [recorder, config?.inputDeviceId])
+  }, [config?.inputDeviceId])
 
   useEffect(() => {
-    return () => {
-      if (recorder) {
-        recorder.stream.getTracks().forEach((track) => track.stop())
-        recorder.stop()
-      }
+    function cleanupStream() {
+      stream.getTracks().forEach((track) => {
+        track.stop()
+      })
     }
-  }, [recorder])
+
+    return cleanupStream
+  }, [stream])
 
   return (
     <div className="flex flex-col mx-auto justify-end bg-[rgba(0,0,0,0.7)]">
+      <VoiceActivityDetection
+        key={stream.id}
+        stream={stream}
+        onSpeechRealStart={onSpeechRealStart}
+        onSpeechEnd={onSpeechEnd}
+        onFrameProcessed={onFrameProcessed}
+        preSpeechPadFrames={128}
+      />
       {
         <div className="flex flex-col items-center px-4">
           <div className="w-full py-8 px-16">
