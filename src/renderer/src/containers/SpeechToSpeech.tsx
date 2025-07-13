@@ -359,7 +359,7 @@ function SpeechToSpeech(): React.JSX.Element {
         <Select
           onChange={handleCaptionsTaskChange}
           options={['translate', 'transcribe']}
-          value="translate"
+          value={captionsConfig.task}
           label="Caption Task"
         />
 
