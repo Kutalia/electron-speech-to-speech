@@ -49,8 +49,8 @@ function Captions() {
 
   const { workerPostMessage, workerAddEventListener, workerRemoveEventListener } =
     useMemo<WorkerHelper>(() => {
-      switch (config?.usingGPU) {
-        case true: {
+      switch (config?.runtime) {
+        case 'transformers.js': {
           const w = new SharedWorker(new URL('../workers/captionsWorker.ts', import.meta.url), {
             type: 'module'
           })
@@ -61,14 +61,14 @@ function Captions() {
             workerRemoveEventListener: w.port.addEventListener.bind(w.port)
           }
         }
-        case false: {
-          window.api.createCaptionsCPUWorker()
+        case 'whisper.cpp': {
+          window.api.createCaptionsNodeWorker()
 
           return {
             workerPostMessage: (message) =>
-              window.api.sendCaptionsCPUWorkerMessage(JSON.stringify(message)),
+              window.api.sendCaptionsNodeWorkerMessage(JSON.stringify(message)),
             workerAddEventListener: (_, listener) =>
-              window.api.onCaptionsCPUWorkerMessage((message) =>
+              window.api.onCaptionsNodeWorkerMessage((message) =>
                 listener({ data: JSON.parse(message) } as MessageEvent)
               )
           }
@@ -77,7 +77,7 @@ function Captions() {
         default:
           return {}
       }
-    }, [config?.usingGPU])
+    }, [config?.runtime])
 
   // Model loading and progress
   const [status, setStatus] = useState<'loading' | 'configured' | 'ready'>()
@@ -184,7 +184,8 @@ function Captions() {
   }, [status, workerPostMessage])
 
   useEffect(() => {
-    if (workerPostMessage && config && !config.usingGPU) {
+    // Only node worker (whisper.cpp addon) is configured from this window
+    if (workerPostMessage && config?.runtime === 'whisper.cpp') {
       workerPostMessage({ type: 'config', data: config })
     }
   }, [workerPostMessage, config])
@@ -269,7 +270,7 @@ function Captions() {
     // This window shouldn't miss the worker's initial status messages, that's why we announce it as ready only after the listener is set
     broadcastChannel.postMessage({
       status: 'captions_worker_ready',
-      data: { usingGPU: config?.usingGPU }
+      data: { runtime: config?.runtime }
     })
 
     // Define a cleanup function for when the component is unmounted.
@@ -282,7 +283,7 @@ function Captions() {
     broadcastChannel,
     workerAddEventListener,
     workerRemoveEventListener,
-    config?.usingGPU,
+    config?.runtime,
     workerPostMessage
   ])
 

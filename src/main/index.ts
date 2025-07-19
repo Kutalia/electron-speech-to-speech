@@ -12,19 +12,27 @@ import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import { addHotkeyListeners } from './key-listener'
 import { checkAndApplyUpdates } from './updater'
-// @ts-ignore missing type declaration
 import { initMain as initAudioLoopback } from 'electron-audio-loopback'
 import { Worker } from 'node:worker_threads'
-import captionsWorkerPath from './captionsCPUWorker?modulePath'
+import captionsNodeWorkerPath from './captionsNodeWorker?modulePath'
 
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 
 // Create captions CPU worker on demand and handle hooking and clearing all listeners
 const hookCaptionsWorker = (win: BrowserWindow) => {
   const onRequestCreateCaptionsWorker = () => {
-    const captionsWorker = new Worker(captionsWorkerPath)
+    const captionsWorker = new Worker(captionsNodeWorkerPath)
 
     const onCaptionsWorkerSendingMessage = (message) => {
+      if (message.status === 'initialized') {
+        captionsWorker.postMessage({
+          type: 'config',
+          data: {
+            sessionDataPath: app.getPath('sessionData')
+          }
+        })
+      }
+
       win.webContents.send('captions-cpu-worker-sending-message', JSON.stringify(message))
     }
     captionsWorker.on('message', onCaptionsWorkerSendingMessage)

@@ -27,6 +27,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@huggingface/hub": "^2.2.0",
     "@huggingface/transformers": "^3.6.1",
+    "@kutalia/whisper-node-addon": "^1.1.0",
     "@ricky0123/vad-react": "^0.0.30",
     "audiobuffer-to-wav": "^1.0.0",
     "electron-audio-loopback": "^1.0.4",

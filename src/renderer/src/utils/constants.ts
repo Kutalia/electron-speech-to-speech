@@ -3,6 +3,33 @@ import { IGlobalKey } from 'node-global-key-listener'
 
 export const SAMPLING_RATE = 16000
 
+export type WhisperRuntimeTypes = 'whisper.cpp' | 'transformers.js'
+
+interface Runtime {
+  name: WhisperRuntimeTypes
+  description: string
+  descriptionGPU: string
+  descriptionCPU: string
+}
+
+export const WHISPER_RUNTIMES: Runtime[] = [
+  {
+    name: 'whisper.cpp',
+    description: 'whisper.cpp - fast native implementation based on C++',
+    descriptionGPU:
+      'GPU acceleration with Vulkan API on supported Windows and Linux machines, Apple Metal on MacOS (if supported)',
+    descriptionCPU:
+      'CPU inference works best for high-end processors and in scenarios where GPU availability is limited (gaming). Using OpenBLAS is possible on Windows and MacOS.'
+  },
+  {
+    name: 'transformers.js',
+    description: 'transformers.js - cross-platform runtime based on web technologies',
+    descriptionGPU: 'GPU acceleration with WebGPU - a cutting-edge browser technology',
+    descriptionCPU:
+      'CPU inference with WebAssembly - highly optimized browser technology for heavy computations'
+  }
+]
+
 export enum WhisperModelSizeOptions {
   TINY = 'tiny',
   BASE = 'base',
@@ -17,7 +44,7 @@ export type WhisperModelSizes = `${WhisperModelSizeOptions}`
 type STT_MODEL_OPTIONS_TYPE = {
   [k in WhisperModelSizes]: {
     id: string
-    cpuModel: string
+    nodeWorkerModel: string
     options: PretrainedModelOptions
   }
 }
@@ -25,7 +52,7 @@ type STT_MODEL_OPTIONS_TYPE = {
 export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   tiny: {
     id: 'onnx-community/whisper-tiny-ONNX',
-    cpuModel: 'tiny',
+    nodeWorkerModel: 'tiny',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -33,7 +60,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   base: {
     id: 'onnx-community/whisper-base',
-    cpuModel: 'base',
+    nodeWorkerModel: 'base',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -41,7 +68,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   small: {
     id: 'onnx-community/whisper-small',
-    cpuModel: 'small',
+    nodeWorkerModel: 'small',
     options: {
       device: 'webgpu',
       dtype: 'fp32'
@@ -50,7 +77,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   // TODO: add more specialized Whisper models that are tested to work
   small_fr: {
     id: 'onnx-community/whisper-small-cv11-french-ONNX',
-    cpuModel:
+    nodeWorkerModel:
       'https://huggingface.co/Kutalia/ggml-models/resolve/main/whisper-small-cv11-french.bin',
     options: {
       device: 'webgpu',
@@ -59,7 +86,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   medium: {
     id: 'onnx-community/whisper-medium-ONNX',
-    cpuModel: 'medium',
+    nodeWorkerModel: 'medium',
     options: {
       // https://github.com/huggingface/transformers.js/issues/989#issuecomment-2439457733
       // https://github.com/huggingface/transformers.js/issues/1317
@@ -72,7 +99,7 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
   },
   large: {
     id: 'onnx-community/whisper-large-v3-turbo',
-    cpuModel: 'large',
+    nodeWorkerModel: 'large-v3-turbo',
     options: {
       device: 'webgpu',
       dtype: {
@@ -84,7 +111,6 @@ export const STT_MODEL_OPTIONS: STT_MODEL_OPTIONS_TYPE = {
 }
 
 export const DEFAULT_STT_MODEL_OPTION: WhisperModelSizes = 'small'
-export const DEFAULT_STT_CPU_MODEL_OPTION: WhisperModelSizes = 'tiny'
 
 export const DEFAULT_SRC_LANG = 'en'
 export const DEFAULT_TGT_LANG = 'fr'

@@ -8,9 +8,9 @@ declare global {
       openCaptions: () => void
       enableLoopbackAudio: () => Promise<void>
       disableLoopbackAudio: () => Promise<void>
-      createCaptionsCPUWorker: () => void
-      onCaptionsCPUWorkerMessage: (callback: Parameters<Worker['on']>[1]) => void
-      sendCaptionsCPUWorkerMessage: (...params: Parameters<Parameters<Worker['on']>[1]>) => void
+      createCaptionsNodeWorker: () => void
+      onCaptionsNodeWorkerMessage: (callback: Parameters<Worker['on']>[1]) => void
+      sendCaptionsNodeWorkerMessage: (...params: Parameters<Parameters<Worker['on']>[1]>) => void
     }
   }
 }

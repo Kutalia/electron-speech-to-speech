@@ -29,13 +29,13 @@ const postMessageToAllPorts = (...params: Parameters<MessagePort['postMessage']>
  * This class uses the Singleton pattern to ensure that only one instance of the model is loaded.
  */
 class AutomaticSpeechRecognitionPipeline {
-  // Probably I'd better dispose the worker (model first) altogether and open it again
   static model_size = DEFAULT_STT_MODEL_OPTION
   static language: string | null = null
   static task: 'translate' | 'transcribe' = 'translate'
   static tokenizer: Promise<PreTrainedTokenizer> | null = null
   static processor: Promise<Processor> | null = null
   static model: Promise<PreTrainedModel> | null = null
+  static usingGPU = true
 
   static async getInstance(progress_callback?: ProgressCallback) {
     const model_id = STT_MODEL_OPTIONS[this.model_size].id
@@ -49,6 +49,7 @@ class AutomaticSpeechRecognitionPipeline {
 
     this.model ??= WhisperForConditionalGeneration.from_pretrained(model_id, {
       ...STT_MODEL_OPTIONS[this.model_size].options,
+      device: this.usingGPU ? 'webgpu' : 'wasm',
       progress_callback
     })
 
@@ -60,6 +61,7 @@ class AutomaticSpeechRecognitionPipeline {
       task: (typeof AutomaticSpeechRecognitionPipeline)['task']
       language: (typeof AutomaticSpeechRecognitionPipeline)['language']
       modelSize: WhisperModelSizeOptions
+      usingGPU: boolean
     }>
   ) {
     if (Object.prototype.hasOwnProperty.call(config, 'language')) {
@@ -79,6 +81,12 @@ class AutomaticSpeechRecognitionPipeline {
         typeof config.modelSize,
         undefined
       >
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(config, 'usingGPU') &&
+      typeof config['usingGPU'] === 'boolean'
+    ) {
+      AutomaticSpeechRecognitionPipeline.usingGPU = config.usingGPU
     }
   }
 }

@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IGlobalKey, IGlobalKeyEvent } from 'node-global-key-listener'
 
 let hotkeyEventListener: (event: Electron.IpcRendererEvent, state: IGlobalKeyEvent['state']) => void
-let captionsCPUWorkerMessageListener: (event: Electron.IpcRendererEvent, message) => void
+let captionsNodeWorkerMessageListener: (event: Electron.IpcRendererEvent, message) => void
 
 // Custom APIs for renderer
 const api = {
@@ -21,15 +21,15 @@ const api = {
   },
   enableLoopbackAudio: () => ipcRenderer.invoke('enable-loopback-audio'),
   disableLoopbackAudio: () => ipcRenderer.invoke('disable-loopback-audio'),
-  createCaptionsCPUWorker: () => ipcRenderer.send('create-captions-cpu-worker'),
-  onCaptionsCPUWorkerMessage: (callback) => {
-    if (captionsCPUWorkerMessageListener) {
-      ipcRenderer.off('captions-cpu-worker-sending-message', captionsCPUWorkerMessageListener)
+  createCaptionsNodeWorker: () => ipcRenderer.send('create-captions-cpu-worker'),
+  onCaptionsNodeWorkerMessage: (callback) => {
+    if (captionsNodeWorkerMessageListener) {
+      ipcRenderer.off('captions-cpu-worker-sending-message', captionsNodeWorkerMessageListener)
     }
-    captionsCPUWorkerMessageListener = (_, message) => callback(message)
-    ipcRenderer.on('captions-cpu-worker-sending-message', captionsCPUWorkerMessageListener)
+    captionsNodeWorkerMessageListener = (_, message) => callback(message)
+    ipcRenderer.on('captions-cpu-worker-sending-message', captionsNodeWorkerMessageListener)
   },
-  sendCaptionsCPUWorkerMessage: (message) => {
+  sendCaptionsNodeWorkerMessage: (message) => {
     ipcRenderer.send('captions-cpu-worker-receiving-message', message)
   }
 }

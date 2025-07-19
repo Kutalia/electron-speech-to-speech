@@ -16,20 +16,22 @@ import {
   BROADCAST_CHANNEL_NAME,
   DEFAULT_PRIMARY_HOTKEY,
   DEFAULT_SECONDARY_HOTKEY,
-  DEFAULT_STT_CPU_MODEL_OPTION,
   DEFAULT_STT_MODEL_OPTION,
   SAMPLING_RATE,
   STT_MODEL_OPTIONS,
+  WHISPER_RUNTIMES,
   WhisperModelSizeOptions,
-  WhisperModelSizes
+  WhisperModelSizes,
+  WhisperRuntimeTypes
 } from '../utils/constants'
 import { getLanguages, getTranslationModels } from '../utils/helpers'
 
 const defaultCaptionsConfig: CaptionsConfig = {
   modelSize: WhisperModelSizeOptions.SMALL,
-  cpuModel: STT_MODEL_OPTIONS[WhisperModelSizeOptions.SMALL].cpuModel,
+  nodeWorkerModel: STT_MODEL_OPTIONS[WhisperModelSizeOptions.SMALL].nodeWorkerModel,
   task: 'translate',
   usingGPU: true,
+  runtime: 'whisper.cpp',
   language: null,
   inputDeviceId: null
 }
@@ -115,7 +117,7 @@ function SpeechToSpeech(): React.JSX.Element {
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
 
   useEffect(() => {
-    const bcListener = (e: MessageEvent) => {
+    const bcListener = (e: MessageEvent<{ status: string; data: CaptionsConfig }>) => {
       switch (e.data.status) {
         case 'captions_window_ready': {
           setIsCaptionsWindowReady(true)
@@ -124,7 +126,7 @@ function SpeechToSpeech(): React.JSX.Element {
         case 'captions_worker_ready': {
           setIsCaptionsWorkerReady(true)
 
-          if (e.data.data.usingGPU) {
+          if (e.data.data.runtime === 'transformers.js') {
             // Making sure the shared worker is initiated from captions window to save memory before the latter is opened
             setCaptionsWorker(
               (prevState) =>
@@ -202,7 +204,7 @@ function SpeechToSpeech(): React.JSX.Element {
     setCaptionsConfig((prevState) => ({
       ...prevState,
       modelSize: modelSize as WhisperModelSizes,
-      cpuModel: STT_MODEL_OPTIONS[modelSize].cpuModel
+      nodeWorkerModel: STT_MODEL_OPTIONS[modelSize].nodeWorkerModel
     }))
   }, [])
 
@@ -220,22 +222,12 @@ function SpeechToSpeech(): React.JSX.Element {
     }))
   }, [])
 
-  const handleCaptionsUsingGPUChange = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
-    (event) => {
-      const usingGPU = !!event.target.checked
-
-      setCaptionsConfig((prevState) => ({
-        ...prevState,
-        usingGPU
-      }))
-
-      // Switching to the most optimized CPU model
-      if (!usingGPU) {
-        handleCaptionsModelChange(DEFAULT_STT_CPU_MODEL_OPTION)
-      }
-    },
-    [handleCaptionsModelChange]
-  )
+  const handleCaptionsUsingGPUChange = useCallback((useGPU: boolean) => {
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      usingGPU: useGPU
+    }))
+  }, [])
 
   const handleCaptionsUsingSystemAudio = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
     (event) => {
@@ -255,6 +247,13 @@ function SpeechToSpeech(): React.JSX.Element {
     setCaptionsConfig((prevState) => ({
       ...prevState,
       inputDeviceId: deviceId
+    }))
+  }, [])
+
+  const handleCaptionsRuntimeChange = useCallback((runtime: string) => {
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      runtime: runtime as WhisperRuntimeTypes
     }))
   }, [])
 
@@ -334,17 +333,49 @@ function SpeechToSpeech(): React.JSX.Element {
           {isCaptionsWorkerReady && "(some settings can't be changed before restarting the app)"}
         </legend>
 
-        <label className="label text-white">
-          <input
-            type="checkbox"
-            checked={captionsConfig.usingGPU}
-            className="checkbox checkbox-info"
-            onChange={handleCaptionsUsingGPUChange}
-            disabled={isCaptionsWorkerReady}
-          />
-          Use WebGPU acceleration
+        <label className="label text-white gap-3 items-start">
+          <div
+            className="flex flex-col gap-1 tooltip"
+            data-tip={
+              WHISPER_RUNTIMES.find((runtime) => runtime.name === captionsConfig.runtime)
+                ?.descriptionGPU
+            }
+          >
+            <input
+              type="radio"
+              checked={captionsConfig.usingGPU}
+              className="radio radio-info"
+              onChange={() => handleCaptionsUsingGPUChange(true)}
+              disabled={isCaptionsWorkerReady}
+            />
+            <p className="text-xs">Yes</p>
+          </div>
+          <div
+            className="flex flex-col gap-1 tooltip"
+            data-tip={
+              WHISPER_RUNTIMES.find((runtime) => runtime.name === captionsConfig.runtime)
+                ?.descriptionCPU
+            }
+          >
+            <input
+              type="radio"
+              checked={!captionsConfig.usingGPU}
+              className="radio radio-info tooltip"
+              onChange={() => handleCaptionsUsingGPUChange(false)}
+              disabled={isCaptionsWorkerReady}
+            />
+            <p className="text-xs">No</p>
+          </div>
+          Use GPU acceleration
         </label>
 
+        <Select
+          options={WHISPER_RUNTIMES.map((runtime) => runtime.name)}
+          label="Whisper Runtime"
+          onChange={handleCaptionsRuntimeChange}
+          value={captionsConfig.runtime}
+          disabled={isCaptionsWorkerReady}
+        />
         <Select
           options={Object.values(WhisperModelSizeOptions)}
           label="OpenAI Whisper Model Size for Captioning"
