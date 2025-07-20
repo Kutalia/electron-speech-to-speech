@@ -10,4 +10,5 @@ export interface CaptionsConfig {
   usingGPU: boolean
   language?: string | null
   inputDeviceId: string | null
+  position: 'top' | 'bottom'
 }

@@ -46,6 +46,8 @@ type WorkerMessageData =
 
 function Captions() {
   const [config, setConfig] = useState<CaptionsConfig>()
+  const [wrapperEl, setWrapperEl] = useState<HTMLDivElement | null>()
+  const [windowDimensions, setWindowDimensions] = useState<{ width: number; height: number }>()
 
   const { workerPostMessage, workerAddEventListener, workerRemoveEventListener } =
     useMemo<WorkerHelper>(() => {
@@ -356,8 +358,53 @@ function Captions() {
     return cleanupStream
   }, [stream])
 
+  useEffect(() => {
+    if (!wrapperEl) {
+      return
+    }
+
+    window.api.onCaptionsWindowMove((width, height) => {
+      setWindowDimensions({ width, height })
+    })
+  }, [wrapperEl])
+
+  useEffect(() => {
+    if (!wrapperEl || !config?.position) {
+      return
+    }
+
+    let space = 0
+
+    if (windowDimensions) {
+      wrapperEl.style.width = `${windowDimensions.width}px`
+      space = windowDimensions.height - wrapperEl.clientHeight
+    }
+
+    switch (config.position) {
+      case 'top':
+        {
+          wrapperEl.style.bottom = 'initial'
+          wrapperEl.style.top = '0px'
+        }
+        break
+      case 'bottom':
+        {
+          if (windowDimensions) {
+            wrapperEl.style.bottom = 'initial'
+            wrapperEl.style.top = `${space}px`
+          } else {
+            wrapperEl.style.bottom = '0px'
+          }
+        }
+        break
+    }
+  }, [wrapperEl, config?.position, windowDimensions])
+
   return (
-    <div className="flex flex-col mx-auto justify-end bg-[rgba(0,0,0,0.7)]">
+    <div
+      className="flex flex-col mx-auto justify-end bg-[rgba(0,0,0,0.7)] fixed w-screen"
+      ref={setWrapperEl}
+    >
       <VoiceActivityDetection
         key={stream.id}
         stream={stream}
@@ -380,7 +427,7 @@ function Captions() {
           </div>
           {status === 'loading' && (
             <div className="w-full max-w-[500px] text-left mx-auto p-4">
-              <p className="text-center">{loadingMessage}</p>
+              <p className="text-center text-white">{loadingMessage}</p>
               {progressItems.map(({ file, progress, total }, i) => (
                 <Progress key={i} text={file} percentage={progress} total={total} />
               ))}

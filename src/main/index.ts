@@ -5,7 +5,8 @@ import {
   ipcMain,
   session,
   shell,
-  BrowserWindowConstructorOptions
+  BrowserWindowConstructorOptions,
+  screen
 } from 'electron'
 import { IGlobalKey } from 'node-global-key-listener'
 import { join } from 'path'
@@ -148,6 +149,22 @@ function createCaptionsWindow(): void {
   // Create the browser window.
   const win = new BrowserWindow(windowOptions)
   captionsWindow = win
+
+  captionsWindow.on('move', () => {
+    if (!captionsWindow) {
+      return
+    }
+
+    const windowBounds = captionsWindow.getBounds()
+    const currentDisplay = screen.getDisplayMatching(windowBounds)
+
+    win.webContents.send(
+      'captions-window-move',
+      currentDisplay.size.width,
+      currentDisplay.size.height,
+      currentDisplay.scaleFactor
+    )
+  })
 
   hookCaptionsWorker(win)
 

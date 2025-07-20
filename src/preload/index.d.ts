@@ -11,6 +11,9 @@ declare global {
       createCaptionsNodeWorker: () => void
       onCaptionsNodeWorkerMessage: (callback: Parameters<Worker['on']>[1]) => void
       sendCaptionsNodeWorkerMessage: (...params: Parameters<Parameters<Worker['on']>[1]>) => void
+      onCaptionsWindowMove: (
+        callback: (width: number, height: number, scaleFactor: number) => void
+      ) => void
     }
   }
 }

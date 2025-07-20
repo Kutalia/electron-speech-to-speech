@@ -33,7 +33,8 @@ const defaultCaptionsConfig: CaptionsConfig = {
   usingGPU: true,
   runtime: 'whisper.cpp',
   language: null,
-  inputDeviceId: null
+  inputDeviceId: null,
+  position: 'top'
 }
 
 function SpeechToSpeech(): React.JSX.Element {
@@ -257,6 +258,13 @@ function SpeechToSpeech(): React.JSX.Element {
     }))
   }, [])
 
+  const handleCaptionsPositionChange = useCallback((position: string) => {
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      position: position as 'top' | 'bottom'
+    }))
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col gap-8 items-center justify-between py-8 bg-[#1b1b1f]">
       <div className="flex flex-col items-center gap-8">
@@ -392,6 +400,12 @@ function SpeechToSpeech(): React.JSX.Element {
           options={['translate', 'transcribe']}
           value={captionsConfig.task}
           label="Caption Task"
+        />
+        <Select
+          onChange={handleCaptionsPositionChange}
+          options={['top', 'bottom']}
+          value={captionsConfig.position}
+          label="Position"
         />
 
         <div className="flex flex-col items-start gap-2 mt-3">

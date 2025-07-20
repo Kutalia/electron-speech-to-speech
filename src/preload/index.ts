@@ -3,6 +3,12 @@ import { IGlobalKey, IGlobalKeyEvent } from 'node-global-key-listener'
 
 let hotkeyEventListener: (event: Electron.IpcRendererEvent, state: IGlobalKeyEvent['state']) => void
 let captionsNodeWorkerMessageListener: (event: Electron.IpcRendererEvent, message) => void
+let captionsWindowMoveListener: (
+  event: Electron.IpcRendererEvent,
+  width: number,
+  height: number,
+  scaleFactor: number
+) => void
 
 // Custom APIs for renderer
 const api = {
@@ -31,6 +37,20 @@ const api = {
   },
   sendCaptionsNodeWorkerMessage: (message) => {
     ipcRenderer.send('captions-cpu-worker-receiving-message', message)
+  },
+  onCaptionsWindowMove: (
+    callback: (width: number, height: number, scaleFactor: number) => void
+  ) => {
+    if (captionsWindowMoveListener) {
+      ipcRenderer.off('captions-window-move', captionsWindowMoveListener)
+    }
+    captionsWindowMoveListener = (
+      _: Electron.IpcRendererEvent,
+      _width: number,
+      _height: number,
+      _scaleFactor: number
+    ) => callback(_width, _height, _scaleFactor)
+    ipcRenderer.on('captions-window-move', captionsWindowMoveListener)
   }
 }
 
