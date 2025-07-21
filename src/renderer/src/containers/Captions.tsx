@@ -381,22 +381,21 @@ function Captions() {
     }
 
     switch (config.position) {
-      case 'top':
-        {
+      case 'top': {
+        wrapperEl.style.bottom = 'initial'
+        wrapperEl.style.top = '0px'
+        break
+      }
+      case 'bottom': {
+        if (windowDimensions) {
           wrapperEl.style.bottom = 'initial'
-          wrapperEl.style.top = '0px'
+          wrapperEl.style.top = `${space}px`
+        } else {
+          wrapperEl.style.top = 'initial'
+          wrapperEl.style.bottom = '0px'
         }
         break
-      case 'bottom':
-        {
-          if (windowDimensions) {
-            wrapperEl.style.bottom = 'initial'
-            wrapperEl.style.top = `${space}px`
-          } else {
-            wrapperEl.style.bottom = '0px'
-          }
-        }
-        break
+      }
     }
   }, [wrapperEl, config?.position, windowDimensions])
 
