@@ -5,6 +5,8 @@ import {
 } from '@huggingface/transformers'
 import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
 import { CaptionsConfig } from '@renderer/utils/types'
+import { useAtom } from 'jotai'
+import { atomWithStorage } from 'jotai/utils'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AudioRecorder } from '../components/AudioRecorder'
 import { DeviceSelect } from '../components/DeviceSelect'
@@ -38,6 +40,8 @@ const defaultCaptionsConfig: CaptionsConfig = {
   position: 'top'
 }
 
+const captionsConfigAtom = atomWithStorage(CAPTIONS_CONFIG_STORAGE_KEY, defaultCaptionsConfig)
+
 function SpeechToSpeech(): React.JSX.Element {
   const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
   const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
@@ -63,10 +67,7 @@ function SpeechToSpeech(): React.JSX.Element {
   const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel>()
   const [isCaptionsWorkerReady, setIsCaptionsWorkerReady] = useState(false) // If captions worker set in captions window context is ready
   const [isCaptionsWindowReady, setIsCaptionsWindowReady] = useState(false)
-  const [captionsConfig, setCaptionsConfig] = useState<CaptionsConfig>(() => {
-    const storedConfig = localStorage.getItem(CAPTIONS_CONFIG_STORAGE_KEY)
-    return storedConfig ? JSON.parse(storedConfig) : defaultCaptionsConfig
-  })
+  const [captionsConfig, setCaptionsConfig] = useAtom(captionsConfigAtom)
   const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
 
   const onRecordingComplete = useCallback(
@@ -120,10 +121,6 @@ function SpeechToSpeech(): React.JSX.Element {
 
   const allLanguages = useMemo(getLanguages, [])
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
-
-  useEffect(() => {
-    localStorage.setItem(CAPTIONS_CONFIG_STORAGE_KEY, JSON.stringify(captionsConfig))
-  }, [captionsConfig])
 
   useEffect(() => {
     const bcListener = (e: MessageEvent<{ status: string; data: CaptionsConfig }>) => {
@@ -209,34 +206,46 @@ function SpeechToSpeech(): React.JSX.Element {
     setBroadcastChannel(new BroadcastChannel(BROADCAST_CHANNEL_NAME))
   }
 
-  const handleCaptionsModelChange = useCallback((modelSize: string) => {
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      modelSize: modelSize as WhisperModelSizes,
-      nodeWorkerModel: STT_MODEL_OPTIONS[modelSize].nodeWorkerModel
-    }))
-  }, [])
+  const handleCaptionsModelChange = useCallback(
+    (modelSize: string) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        modelSize: modelSize as WhisperModelSizes,
+        nodeWorkerModel: STT_MODEL_OPTIONS[modelSize].nodeWorkerModel
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
-  const handleCaptionsLanguageChange = useCallback((language: string) => {
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      language
-    }))
-  }, [])
+  const handleCaptionsLanguageChange = useCallback(
+    (language: string) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        language
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
-  const handleCaptionsTaskChange = useCallback((task: string) => {
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      task: task as 'translate' | 'transcribe'
-    }))
-  }, [])
+  const handleCaptionsTaskChange = useCallback(
+    (task: string) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        task: task as 'translate' | 'transcribe'
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
-  const handleCaptionsUsingGPUChange = useCallback((useGPU: boolean) => {
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      usingGPU: useGPU
-    }))
-  }, [])
+  const handleCaptionsUsingGPUChange = useCallback(
+    (useGPU: boolean) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        usingGPU: useGPU
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
   const handleCaptionsUsingSystemAudio = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
     (event) => {
@@ -247,31 +256,40 @@ function SpeechToSpeech(): React.JSX.Element {
         inputDeviceId: usingSystemAudio ? null : captionsDeviceId
       }))
     },
-    [captionsDeviceId]
+    [captionsDeviceId, setCaptionsConfig]
   )
 
-  const handleCaptionsDeviceIdChange = useCallback((deviceId: string) => {
-    setCaptionsDeviceId(deviceId)
+  const handleCaptionsDeviceIdChange = useCallback(
+    (deviceId: string) => {
+      setCaptionsDeviceId(deviceId)
 
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      inputDeviceId: deviceId
-    }))
-  }, [])
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        inputDeviceId: deviceId
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
-  const handleCaptionsRuntimeChange = useCallback((runtime: string) => {
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      runtime: runtime as WhisperRuntimeTypes
-    }))
-  }, [])
+  const handleCaptionsRuntimeChange = useCallback(
+    (runtime: string) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        runtime: runtime as WhisperRuntimeTypes
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
-  const handleCaptionsPositionChange = useCallback((position: string) => {
-    setCaptionsConfig((prevState) => ({
-      ...prevState,
-      position: position as 'top' | 'bottom'
-    }))
-  }, [])
+  const handleCaptionsPositionChange = useCallback(
+    (position: string) => {
+      setCaptionsConfig((prevState) => ({
+        ...prevState,
+        position: position as 'top' | 'bottom'
+      }))
+    },
+    [setCaptionsConfig]
+  )
 
   return (
     <div className="min-h-screen flex flex-col gap-8 items-center justify-between py-8 bg-[#1b1b1f]">
