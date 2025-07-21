@@ -265,3 +265,5 @@ export const BROADCAST_CHANNEL_NAME = 'broadcast_channel'
 export const VERIFIED_VOICES = {
   fr: 'fr_FR-siwis-medium'
 }
+
+export const CAPTIONS_CONFIG_STORAGE_KEY = 'captions_config'

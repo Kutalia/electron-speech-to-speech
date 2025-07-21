@@ -14,6 +14,7 @@ import { useWorker } from '../hooks/useWorker'
 import {
   ALL_HOTKEYS,
   BROADCAST_CHANNEL_NAME,
+  CAPTIONS_CONFIG_STORAGE_KEY,
   DEFAULT_PRIMARY_HOTKEY,
   DEFAULT_SECONDARY_HOTKEY,
   DEFAULT_STT_MODEL_OPTION,
@@ -62,7 +63,10 @@ function SpeechToSpeech(): React.JSX.Element {
   const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel>()
   const [isCaptionsWorkerReady, setIsCaptionsWorkerReady] = useState(false) // If captions worker set in captions window context is ready
   const [isCaptionsWindowReady, setIsCaptionsWindowReady] = useState(false)
-  const [captionsConfig, setCaptionsConfig] = useState<CaptionsConfig>(defaultCaptionsConfig)
+  const [captionsConfig, setCaptionsConfig] = useState<CaptionsConfig>(() => {
+    const storedConfig = localStorage.getItem(CAPTIONS_CONFIG_STORAGE_KEY)
+    return storedConfig ? JSON.parse(storedConfig) : defaultCaptionsConfig
+  })
   const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
 
   const onRecordingComplete = useCallback(
@@ -116,6 +120,10 @@ function SpeechToSpeech(): React.JSX.Element {
 
   const allLanguages = useMemo(getLanguages, [])
   const translationModelsPairs = useMemo(() => Array.from(getTranslationModels().keys()), [])
+
+  useEffect(() => {
+    localStorage.setItem(CAPTIONS_CONFIG_STORAGE_KEY, JSON.stringify(captionsConfig))
+  }, [captionsConfig])
 
   useEffect(() => {
     const bcListener = (e: MessageEvent<{ status: string; data: CaptionsConfig }>) => {
