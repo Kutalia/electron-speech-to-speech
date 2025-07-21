@@ -266,4 +266,5 @@ export const VERIFIED_VOICES = {
   fr: 'fr_FR-siwis-medium'
 }
 
+export const STS_CONFIG_STORAGE_KEY = 'speech_to_speech_config'
 export const CAPTIONS_CONFIG_STORAGE_KEY = 'captions_config'

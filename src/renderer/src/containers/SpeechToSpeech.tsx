@@ -4,7 +4,7 @@ import {
   TranslationOutput
 } from '@huggingface/transformers'
 import { WhisperLanguageSelector } from '@renderer/components/WhisperLanguageSelector'
-import { CaptionsConfig } from '@renderer/utils/types'
+import { CaptionsConfig, StsConfig } from '@renderer/utils/types'
 import { useAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -21,6 +21,7 @@ import {
   DEFAULT_SECONDARY_HOTKEY,
   DEFAULT_STT_MODEL_OPTION,
   SAMPLING_RATE,
+  STS_CONFIG_STORAGE_KEY,
   STT_MODEL_OPTIONS,
   WHISPER_RUNTIMES,
   WhisperModelSizeOptions,
@@ -40,14 +41,20 @@ const defaultCaptionsConfig: CaptionsConfig = {
   position: 'top'
 }
 
+const defaultStsConfig: StsConfig = {
+  inputDevice: 'default',
+  outputDevice: 'default',
+  sttModel: DEFAULT_STT_MODEL_OPTION,
+  primaryHotkey: DEFAULT_PRIMARY_HOTKEY,
+  secondaryHotkey: DEFAULT_SECONDARY_HOTKEY
+}
+
+const stsConfigAtom = atomWithStorage(STS_CONFIG_STORAGE_KEY, defaultStsConfig)
 const captionsConfigAtom = atomWithStorage(CAPTIONS_CONFIG_STORAGE_KEY, defaultCaptionsConfig)
 
 function SpeechToSpeech(): React.JSX.Element {
-  const [inputDevice, setInputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
-  const [outputDevice, setOutputDevice] = useState<MediaDeviceInfo['deviceId']>('default')
-  const [captionsDeviceId, setCaptionsDeviceId] = useState<MediaDeviceInfo['deviceId']>('default')
+  const [stsConfig, setStsConfig] = useAtom(stsConfigAtom)
   const [ttsResult, setTtsResult] = useState<TextToAudioOutput>()
-  const [sttModel, setSttModel] = useState<WhisperModelSizes>(DEFAULT_STT_MODEL_OPTION)
   const {
     initWorker,
     isReady,
@@ -56,19 +63,25 @@ function SpeechToSpeech(): React.JSX.Element {
     languages: savedLanguages
   } = useWorker({
     defaultValues: {
-      sttModel
+      sttModel: stsConfig.sttModel
     }
   })
   const [isRecording, setIsRecording] = useState(false)
-  const [primaryHotkey, setPrimaryHotkey] = useState(DEFAULT_PRIMARY_HOTKEY)
-  const [secondaryHotkey, setSecondaryHotkey] = useState<typeof primaryHotkey | ''>(
-    DEFAULT_SECONDARY_HOTKEY
-  )
   const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel>()
   const [isCaptionsWorkerReady, setIsCaptionsWorkerReady] = useState(false) // If captions worker set in captions window context is ready
   const [isCaptionsWindowReady, setIsCaptionsWindowReady] = useState(false)
   const [captionsConfig, setCaptionsConfig] = useAtom(captionsConfigAtom)
   const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
+
+  const updateStsConfig = useCallback(
+    (configPart: Partial<StsConfig>) => {
+      setStsConfig((prevState) => ({
+        ...prevState,
+        ...configPart
+      }))
+    },
+    [setStsConfig]
+  )
 
   const onRecordingComplete = useCallback(
     async (blob: Blob) => {
@@ -175,30 +188,42 @@ function SpeechToSpeech(): React.JSX.Element {
   }, [isCaptionsWindowReady, captionsConfig, broadcastChannel])
 
   useEffect(() => {
-    window.api.setHotkeyListeners(primaryHotkey, secondaryHotkey)
+    window.api.setHotkeyListeners(stsConfig.primaryHotkey, stsConfig.secondaryHotkey)
     window.api.onHotkeyEvent((state: string) => {
       setIsRecording(state === 'DOWN')
     })
-  }, [primaryHotkey, secondaryHotkey])
+  }, [stsConfig.primaryHotkey, stsConfig.secondaryHotkey])
 
   const onLoadSttModels = () => {
     initWorker()
   }
 
-  const onPrimaryHotkeyChange = useCallback((h: string) => {
-    setPrimaryHotkey(h as typeof primaryHotkey)
-  }, [])
+  const onPrimaryHotkeyChange = useCallback(
+    (h: string) => {
+      updateStsConfig({
+        primaryHotkey: h as typeof DEFAULT_PRIMARY_HOTKEY
+      })
+    },
+    [updateStsConfig]
+  )
 
-  const onSecondaryHotkeyChange = useCallback((h: string) => {
-    setSecondaryHotkey(h as typeof secondaryHotkey)
-  }, [])
+  const onSecondaryHotkeyChange = useCallback(
+    (h: string) => {
+      updateStsConfig({
+        secondaryHotkey: h as typeof DEFAULT_SECONDARY_HOTKEY
+      })
+    },
+    [updateStsConfig]
+  )
 
   const onSttModelChange = useCallback(
     (modelSize: string) => {
-      setSttModel(modelSize as WhisperModelSizes)
+      updateStsConfig({
+        sttModel: modelSize as WhisperModelSizes
+      })
       execTask({ task: 'change-stt-model', data: modelSize as WhisperModelSizes })
     },
-    [execTask]
+    [execTask, updateStsConfig]
   )
 
   const onClickOpenCaptions = () => {
@@ -253,16 +278,14 @@ function SpeechToSpeech(): React.JSX.Element {
 
       setCaptionsConfig((prevState) => ({
         ...prevState,
-        inputDeviceId: usingSystemAudio ? null : captionsDeviceId
+        inputDeviceId: usingSystemAudio ? null : captionsConfig.inputDeviceId
       }))
     },
-    [captionsDeviceId, setCaptionsConfig]
+    [captionsConfig.inputDeviceId, setCaptionsConfig]
   )
 
   const handleCaptionsDeviceIdChange = useCallback(
     (deviceId: string) => {
-      setCaptionsDeviceId(deviceId)
-
       setCaptionsConfig((prevState) => ({
         ...prevState,
         inputDeviceId: deviceId
@@ -301,8 +324,18 @@ function SpeechToSpeech(): React.JSX.Element {
         >
           Load Speech-to-Speech Models
         </button>
-        <DeviceSelect kind="audioinput" onChange={setInputDevice} disabled={!isReady} />
-        <DeviceSelect kind="audiooutput" onChange={setOutputDevice} disabled={!isReady} />
+        <DeviceSelect
+          kind="audioinput"
+          value={stsConfig.inputDevice}
+          onChange={(inputDevice) => updateStsConfig({ inputDevice })}
+          disabled={!isReady}
+        />
+        <DeviceSelect
+          kind="audiooutput"
+          value={stsConfig.outputDevice}
+          onChange={(outputDevice) => updateStsConfig({ outputDevice })}
+          disabled={!isReady}
+        />
         <div className="flex gap-4 justify-stretch w-80">
           <Select
             options={allLanguages.input}
@@ -330,14 +363,14 @@ function SpeechToSpeech(): React.JSX.Element {
             options={['', ...ALL_HOTKEYS]}
             label="Secondary Hotkey"
             onChange={onSecondaryHotkeyChange}
-            value={secondaryHotkey}
+            value={stsConfig.secondaryHotkey}
           />
           <div className="text-white self-center">+</div>
           <Select
             options={ALL_HOTKEYS}
             label="Primary Hotkey"
             onChange={onPrimaryHotkeyChange}
-            value={primaryHotkey}
+            value={stsConfig.primaryHotkey}
           />
         </div>
         <div className="flex gap-4 justify-stretch w-80">
@@ -345,7 +378,7 @@ function SpeechToSpeech(): React.JSX.Element {
             options={Object.values(WhisperModelSizeOptions)}
             label="OpenAI Whisper Model Size"
             onChange={onSttModelChange}
-            value={sttModel}
+            value={stsConfig.sttModel}
           />
         </div>
       </div>
@@ -353,8 +386,8 @@ function SpeechToSpeech(): React.JSX.Element {
       {isReady && (
         <div style={{ display: !isLoading ? 'block' : 'none' }}>
           <AudioRecorder
-            inputDeviceId={inputDevice}
-            outputDeviceId={outputDevice}
+            inputDeviceId={stsConfig.inputDevice}
+            outputDeviceId={stsConfig.outputDevice}
             onRecordingComplete={onRecordingComplete}
             ttsResult={ttsResult}
             hotkeyPressed={isRecording}
@@ -447,6 +480,7 @@ function SpeechToSpeech(): React.JSX.Element {
           <legend className="fieldset-legend text-white">Captured Input Audio Device</legend>
           <DeviceSelect
             kind="audioinput"
+            value={captionsConfig.inputDeviceId}
             onChange={handleCaptionsDeviceIdChange}
             disabled={!captionsConfig.inputDeviceId}
           />
