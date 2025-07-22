@@ -16,6 +16,12 @@ export const DeviceSelect: React.FC<Props> = ({ kind, value, onChange, disabled 
     })
   }, [])
 
+  useEffect(() => {
+    if (devices && value && !devices.find((device) => device.deviceId === value)) {
+      onChange('default')
+    }
+  }, [devices, onChange, value])
+
   return (
     devices && (
       <select
