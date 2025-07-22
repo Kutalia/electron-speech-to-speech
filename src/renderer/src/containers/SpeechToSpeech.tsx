@@ -75,6 +75,7 @@ function SpeechToSpeech(): React.JSX.Element {
   const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
   const [transcribedText, setTranscribedText] = useState<string>()
   const [translatedText, setTranslatedText] = useState<string>()
+  const [captionsDeviceIdSelectValue, setCaptionsDeviceIdSelectValue] = useState<string>('default')
 
   const updateStsConfig = useCallback(
     (configPart: Partial<StsConfig>) => {
@@ -280,20 +281,20 @@ function SpeechToSpeech(): React.JSX.Element {
     [setCaptionsConfig]
   )
 
-  const handleCaptionsUsingSystemAudio = useCallback<React.ChangeEventHandler<HTMLInputElement>>(
-    (event) => {
-      const usingSystemAudio = !!event.target.checked
+  const handleCaptionsUsingSystemAudio = useCallback<
+    React.ChangeEventHandler<HTMLInputElement>
+  >(() => {
+    const usingSystemAudio = !captionsConfig.inputDeviceId
 
-      setCaptionsConfig((prevState) => ({
-        ...prevState,
-        inputDeviceId: usingSystemAudio ? null : captionsConfig.inputDeviceId
-      }))
-    },
-    [captionsConfig.inputDeviceId, setCaptionsConfig]
-  )
+    setCaptionsConfig((prevState) => ({
+      ...prevState,
+      inputDeviceId: usingSystemAudio ? captionsDeviceIdSelectValue : null
+    }))
+  }, [captionsConfig.inputDeviceId, captionsDeviceIdSelectValue, setCaptionsConfig])
 
   const handleCaptionsDeviceIdChange = useCallback(
     (deviceId: string) => {
+      setCaptionsDeviceIdSelectValue(deviceId)
       setCaptionsConfig((prevState) => ({
         ...prevState,
         inputDeviceId: deviceId
@@ -496,7 +497,7 @@ function SpeechToSpeech(): React.JSX.Element {
           <legend className="fieldset-legend text-white">Captured Input Audio Device</legend>
           <DeviceSelect
             kind="audioinput"
-            value={captionsConfig.inputDeviceId}
+            value={captionsDeviceIdSelectValue}
             onChange={handleCaptionsDeviceIdChange}
             disabled={!captionsConfig.inputDeviceId}
           />
