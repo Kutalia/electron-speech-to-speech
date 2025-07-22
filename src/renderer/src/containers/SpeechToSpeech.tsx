@@ -29,6 +29,7 @@ import {
   WhisperRuntimeTypes
 } from '../utils/constants'
 import { getLanguages, getTranslationModels } from '../utils/helpers'
+import { StaticTextareaWithLabel } from '@renderer/components/StaticTextareaWithLabel'
 
 const defaultCaptionsConfig: CaptionsConfig = {
   modelSize: WhisperModelSizeOptions.SMALL,
@@ -72,6 +73,8 @@ function SpeechToSpeech(): React.JSX.Element {
   const [isCaptionsWindowReady, setIsCaptionsWindowReady] = useState(false)
   const [captionsConfig, setCaptionsConfig] = useAtom(captionsConfigAtom)
   const [captionsWorker, setCaptionsWorker] = useState<SharedWorker>()
+  const [transcribedText, setTranscribedText] = useState<string>()
+  const [translatedText, setTranslatedText] = useState<string>()
 
   const updateStsConfig = useCallback(
     (configPart: Partial<StsConfig>) => {
@@ -101,11 +104,16 @@ function SpeechToSpeech(): React.JSX.Element {
       })) as AutomaticSpeechRecognitionOutput
       const text = transcriptionResult.text
 
+      setTranscribedText(text)
+
       const translationResult = (await execTask({
         task: 'translation',
         data: text
       })) as TranslationOutput
       const translatedText = translationResult.map((t) => t.translation_text).join('')
+
+      setTranslatedText(translatedText)
+
       console.log({ text, translatedText })
 
       const synthesizingResult = (await execTask({
@@ -383,6 +391,14 @@ function SpeechToSpeech(): React.JSX.Element {
         </div>
       </div>
       {isLoading && <div className="loading loading-bars loading-xl text-accent" />}
+      <div className="text-white w-80">
+        {transcribedText && (
+          <StaticTextareaWithLabel label="Last transcribed text" text={transcribedText} />
+        )}
+        {translatedText && (
+          <StaticTextareaWithLabel label="Last translated text" text={translatedText} />
+        )}
+      </div>
       {isReady && (
         <div style={{ display: !isLoading ? 'block' : 'none' }}>
           <AudioRecorder
