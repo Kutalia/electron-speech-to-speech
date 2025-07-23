@@ -4,8 +4,13 @@ A no-brainer ready-to-use Electron based speech-to-speech and live captions app 
 
 ## Main features
 1) **Entire speech-to-speech** (transcription, translation, voice synthesis) pipeline utilizing OpenAI Whisper, VITS Kokoro and various other open-source AI models running on **WASM** and **WebGPU**
-2) **Live captions** using my [**whisper.cpp** Node.js addon](https://www.npmjs.com/package/@kutalia/whisper-node-addon) supporting GPU acceleration through **Vulkan API** and **Apple Metal**, or **OpenBLAS** for CPU inference on Windows. You can not only caption your **system's audio** but also any input stream as well (recommended to use virtual audio device for voice calls, more on that below)
+2) **Live captions** using my [**whisper.cpp** Node.js addon](https://www.npmjs.com/package/@kutalia/whisper-node-addon) supporting GPU acceleration through **Vulkan API** and **Apple Metal**, or **OpenBLAS** for CPU inference on Windows. It can transcribe **up to 99 languages** and also optionally translate to English. You can not only caption your **system's audio** but also any input stream as well (recommended to use virtual audio device for voice calls, more on that below)
 3) **Cross-platform** - while Windows build is provided and the app is optimized for it, you can compile for other platforms (Mac, Linux) with a single npm command
+
+## Installation
+Just visit [releases](https://github.com/Kutalia/electron-speech-to-speech/releases) and download an installer for your platform from *Assets* section of the latest release. For example, *.exe* file for Windows
+
+Currently only Windows builds are provided
 
 ## Recommended system requirements
 
