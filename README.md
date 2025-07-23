@@ -1,14 +1,17 @@
-# electron-speech-to-speech
+# electron-speech-to-speech - free unlimited local speech-to-speech and real-time captioning solution
 
-A no-brainer ready-to-use Electron speech-to-speech app for your voice calls based on 100% locally run AI models
+A no-brainer ready-to-use Electron based speech-to-speech and live captions app for your voice calls based on 100% locally run AI models
 
-Scaffolded with `npm create @quick-start/electron@latest` `react-ts` template
+## Main features
+1) **Entire speech-to-speech** (transcription, translation, voice synthesis) pipeline utilizing OpenAI Whisper, VITS Kokoro and various other open-source AI models running on **WASM** and **WebGPU**
+2) **Live captions** using my [**whisper.cpp** Node.js addon](https://www.npmjs.com/package/@kutalia/whisper-node-addon) supporting GPU acceleration through **Vulkan API** and **Apple Metal**, or **OpenBLAS** for CPU inference on Windows. You can not only caption your **system's audio** but also any input stream as well (recommended to use virtual audio device for voice calls, more on that below)
+3) **Cross-platform** - while Windows build is provided and the app is optimized for it, you can compile for other platforms (Mac, Linux) with a single npm command
 
 ## Recommended system requirements
 
 At least 32GB RAM given that some models run CPU-side with **WASM** as the **WebGPU** support for them is experimental and buggy
 
-Specifically, OpenAI Whisper speech transcription part runs with WebGPU while translation and voice synthesis are CPU managed
+Specifically, during speech-to-speech OpenAI Whisper transcription models run on WebGPU while translation and voice synthesis are CPU managed
 
 ## Misc. Recommendations
 
@@ -25,6 +28,11 @@ Here's how to use it:
 4. Choose the respective option in the Electron app from the second select field, so it corresponds to your virtual audio device name.
 
 Also, you can make this device as your default input device by opening the same window as defined in _2)_, right clicking on the device and selecting both _Set as Default Device_ and _Set as Default Communication Device_. That way you won't have to reconfigure your VC apps (unless you're already using specific options there).
+
+Same goes for live captions input device. Choose:
+- *System Audio* if you wish to caption output audio from your computer
+- a microphone device for transcribing your voice
+- a virtual audio device to only caption incoming streams from specific configured apps.
 
 ## Recommended IDE Setup
 
@@ -56,3 +64,5 @@ $ npm run build:mac
 # For Linux
 $ npm run build:linux
 ```
+
+*Scaffolded with `npm create @quick-start/electron@latest` `react-ts` template*
